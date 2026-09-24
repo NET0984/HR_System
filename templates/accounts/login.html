@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Đăng nhập{% endblock %}
+{% block auth_content %}
+<div class="auth-page">
+    <div class="auth-showcase">
+        <div class="auth-brand">
+            <span class="auth-brand-icon"><i class="bi bi-people-fill"></i></span>
+            <span>Quản lý nhân sự<br>&amp; Chấm công</span>
+        </div>
+        <div class="auth-showcase-copy">
+            <p class="eyebrow">CỔNG LÀM VIỆC NỘI BỘ</p>
+            <h1>Quản lý công việc<br>nhân sự <em>đơn giản hơn.</em></h1>
+            <p>Theo dõi chấm công, nghỉ phép và các yêu cầu cần xử lý trong một hệ thống tập trung.</p>
+        </div>
+        <div class="auth-showcase-footer"><i class="bi bi-shield-check me-2"></i>Dữ liệu được quản lý an toàn</div>
+    </div>
+
+    <div class="auth-form-area">
+        <div class="auth-form-card">
+            <div class="auth-mobile-brand">
+                <span class="auth-brand-icon"><i class="bi bi-people-fill"></i></span>
+                <strong>Quản lý nhân sự &amp; Chấm công</strong>
+            </div>
+            <div class="auth-heading">
+                <p class="eyebrow">CHÀO MỪNG QUAY LẠI</p>
+                <h2>Đăng nhập tài khoản</h2>
+                <p>Nhập thông tin để tiếp tục vào hệ thống.</p>
+            </div>
+            {% if form.errors %}
+            <div class="auth-error" role="alert">
+                <i class="bi bi-exclamation-circle me-2"></i>Tên đăng nhập hoặc mật khẩu không đúng.
+            </div>
+            {% endif %}
+            <form method="post" class="auth-form">
+                {% csrf_token %}
+                <div class="auth-field">
+                    <label for="id_username">Tên đăng nhập</label>
+                    <div class="input-with-icon">
+                        <i class="bi bi-person"></i>
+                        <input type="text" name="username" id="id_username" placeholder="Nhập tên đăng nhập" autocomplete="username" required autofocus>
+                    </div>
+                </div>
+                <div class="auth-field">
+                    <label for="id_password">Mật khẩu</label>
+                    <div class="input-with-icon">
+                        <i class="bi bi-lock"></i>
+                        <input type="password" name="password" id="id_password" placeholder="Nhập mật khẩu" autocomplete="current-password" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary auth-submit">
+                    Đăng nhập <i class="bi bi-arrow-right ms-2"></i>
+                </button>
+                <input type="hidden" name="next" value="{{ next }}">
+            </form>
+            <p class="auth-help"><i class="bi bi-info-circle me-1"></i> Liên hệ bộ phận HR nếu bạn quên thông tin đăng nhập.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

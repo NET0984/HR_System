@@ -1,0 +1,65 @@
+{% load static %}
+<div class="d-flex flex-column h-100 w-100">
+    <div class="brand p-3">
+        <a class="brand-link" href="{% url 'accounts:home' %}">
+            <span class="brand-mark"><i class="bi bi-people-fill"></i></span>
+            <span class="brand-copy"><strong>Quản lý nhân sự</strong><small>&amp; Chấm công</small></span>
+        </a>
+    </div>
+
+    <nav class="sidebar-nav flex-grow-1 overflow-auto">
+        <p class="section-title">Tổng quan</p>
+        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'accounts:home' %}">
+            <span class="nav-icon"><i class="bi bi-grid-1x2-fill"></i></span><span class="nav-label">Trang chủ</span>
+        </a>
+
+        <p class="section-title">Cá nhân</p>
+        <a class="nav-link {% if request.resolver_match.url_name == 'my' %}active{% endif %}" href="{% url 'attendance:my' %}">
+            <span class="nav-icon"><i class="bi bi-clock-history"></i></span><span class="nav-label">Chấm công</span>
+        </a>
+        <a class="nav-link {% if request.resolver_match.app_name == 'leave' and request.resolver_match.url_name != 'queue' %}active{% endif %}" href="{% url 'leave:list' %}">
+            <span class="nav-icon"><i class="bi bi-calendar2-week"></i></span><span class="nav-label">Nghỉ phép</span>
+        </a>
+
+        {% if user.is_hr %}
+        <p class="section-title">Quản trị</p>
+        <a class="nav-link {% if request.resolver_match.url_name == 'list' and request.resolver_match.app_name == 'employees' %}active{% endif %}" href="{% url 'employees:list' %}">
+            <span class="nav-icon"><i class="bi bi-person-lines-fill"></i></span><span class="nav-label">Nhân sự</span>
+        </a>
+        <a class="nav-link {% if request.resolver_match.url_name == 'correction_queue' %}active{% endif %}" href="{% url 'attendance:correction_queue' %}">
+            <span class="nav-icon"><i class="bi bi-pencil-square"></i></span><span class="nav-label">Duyệt sửa chấm công</span>
+        </a>
+        <a class="nav-link {% if request.resolver_match.url_name == 'queue' %}active{% endif %}" href="{% url 'leave:queue' %}">
+            <span class="nav-icon"><i class="bi bi-calendar-check"></i></span><span class="nav-label">Duyệt nghỉ phép</span>
+        </a>
+        <a class="nav-link {% if request.resolver_match.url_name == 'manage' or request.resolver_match.url_name == 'manage_edit' %}active{% endif %}" href="{% url 'attendance:manage' %}">
+            <span class="nav-icon"><i class="bi bi-table"></i></span><span class="nav-label">Bảng chấm công</span>
+        </a>
+        <a class="nav-link {% if request.resolver_match.url_name == 'monthly' %}active{% endif %}" href="{% url 'reports:monthly' %}">
+            <span class="nav-icon"><i class="bi bi-bar-chart-line-fill"></i></span><span class="nav-label">Báo cáo tháng</span>
+        </a>
+        <a class="nav-link {% if request.resolver_match.app_name == 'audit' %}active{% endif %}" href="{% url 'audit:list' %}">
+            <span class="nav-icon"><i class="bi bi-clock-history"></i></span><span class="nav-label">Nhật ký hoạt động</span>
+        </a>
+        {% endif %}
+    </nav>
+
+    <div class="sidebar-footer p-3">
+        <div class="sidebar-user-card">
+            <div class="sidebar-user">
+                <span class="sidebar-avatar"><i class="bi bi-person-fill"></i></span>
+                <span class="sidebar-user-copy"><strong>{{ user.username }}</strong><small>{{ user.get_role_display }}</small></span>
+                <span class="online-dot" title="Đang hoạt động"></span>
+                <button class="sidebar-user-menu-trigger" type="button" aria-expanded="false" aria-label="Mở menu tài khoản">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+            </div>
+            <div class="sidebar-account-actions">
+                <form method="post" action="{% url 'accounts:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="sidebar-logout-button"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

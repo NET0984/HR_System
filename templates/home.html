@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}Trang chủ{% endblock %}
+{% block page_title %}<i class="bi bi-grid-1x2-fill me-2"></i>Trang chủ{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> Trang chủ</div>{% endblock %}
+{% block content %}
+<section class="welcome-panel mb-4">
+    <div>
+        <p class="eyebrow mb-2">HỆ THỐNG QUẢN LÝ NHÂN SỰ</p>
+        <h1>Xin chào, {{ user.get_full_name|default:user.username }}</h1>
+        <p class="mb-0">Theo dõi chấm công và xử lý công việc nhân sự trong một nơi.</p>
+    </div>
+    <div class="welcome-date">
+        <i class="bi bi-calendar2-week"></i>
+        <span>Hôm nay<br><strong>{% now "d/m/Y" %}</strong></span>
+    </div>
+</section>
+
+{% if metrics_company %}
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <article class="metric-card metric-card-blue">
+            <div class="metric-icon"><i class="bi bi-people-fill"></i></div>
+            <div><p>Nhân viên</p><strong>{{ metrics_company.employees }}</strong><small>Đang làm việc</small></div>
+        </article>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <article class="metric-card metric-card-green">
+            <div class="metric-icon"><i class="bi bi-check2-circle"></i></div>
+            <div><p>Có mặt hôm nay</p><strong>{{ metrics_company.present_today }}</strong><small>Đã chấm công</small></div>
+        </article>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <article class="metric-card metric-card-orange">
+            <div class="metric-icon"><i class="bi bi-pencil-square"></i></div>
+            <div><p>Chờ duyệt sửa</p><strong>{{ metrics_company.pending_corrections }}</strong><small>Cần HR xử lý</small></div>
+        </article>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <article class="metric-card metric-card-purple">
+            <div class="metric-icon"><i class="bi bi-calendar2-check"></i></div>
+            <div><p>Đơn nghỉ phép</p><strong>{{ metrics_company.pending_leave }}</strong><small>Đang chờ duyệt</small></div>
+        </article>
+    </div>
+</div>
+{% elif metrics_personal %}
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <article class="metric-card metric-card-blue">
+            <div class="metric-icon"><i class="bi bi-calendar2-check"></i></div>
+            <div><p>Ngày công tháng này</p><strong>{{ metrics_personal.completed_days }}</strong><small>Ngày hoàn thành</small></div>
+        </article>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <article class="metric-card metric-card-green">
+            <div class="metric-icon"><i class="bi bi-clock-history"></i></div>
+            <div><p>Giờ làm tháng này</p><strong>{{ metrics_personal.total_hours }}h</strong><small>Tổng giờ hiệu lực</small></div>
+        </article>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <article class="metric-card metric-card-orange">
+            <div class="metric-icon"><i class="bi bi-pencil-square"></i></div>
+            <div><p>Yêu cầu sửa</p><strong>{{ metrics_personal.pending_corrections }}</strong><small>Đang chờ duyệt</small></div>
+        </article>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <article class="metric-card metric-card-purple">
+            <div class="metric-icon"><i class="bi bi-calendar2-week"></i></div>
+            <div><p>Đơn nghỉ phép</p><strong>{{ metrics_personal.pending_leave }}</strong><small>Đang chờ duyệt</small></div>
+        </article>
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-xl-7">
+        <section class="app-card h-100">
+            <div class="section-heading">
+                <div><p class="eyebrow">THAO TÁC NHANH</p><h2>Công việc của bạn</h2></div>
+                <i class="bi bi-lightning-charge-fill heading-icon"></i>
+            </div>
+            <div class="quick-actions">
+                <a class="quick-action" href="{% url 'attendance:my' %}">
+                    <span class="quick-action-icon bg-blue"><i class="bi bi-clock-history"></i></span>
+                    <span><strong>Chấm công</strong><small>Check-in hoặc check-out hôm nay</small></span>
+                    <i class="bi bi-arrow-up-right"></i>
+                </a>
+                <a class="quick-action" href="{% url 'leave:list' %}">
+                    <span class="quick-action-icon bg-purple"><i class="bi bi-calendar-plus"></i></span>
+                    <span><strong>Gửi đơn nghỉ phép</strong><small>Đăng ký và theo dõi trạng thái đơn</small></span>
+                    <i class="bi bi-arrow-up-right"></i>
+                </a>
+                {% if user.is_hr %}
+                <a class="quick-action" href="{% url 'attendance:correction_queue' %}">
+                    <span class="quick-action-icon bg-orange"><i class="bi bi-inbox"></i></span>
+                    <span><strong>Kiểm tra yêu cầu</strong><small>Xem các yêu cầu cần HR phê duyệt</small></span>
+                    <i class="bi bi-arrow-up-right"></i>
+                </a>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-5">
+        <section class="app-card h-100 attendance-summary">
+            <div class="section-heading">
+                <div><p class="eyebrow">HÔM NAY</p><h2>Trạng thái chấm công</h2></div>
+                <i class="bi bi-clock heading-icon"></i>
+            </div>
+            {% if not employee %}
+            <div class="status-empty">
+                <div class="status-empty-icon"><i class="bi bi-person-x"></i></div>
+                <h3>Chưa gắn hồ sơ nhân viên</h3>
+                <p>Tài khoản này chưa liên kết với hồ sơ nhân viên nên không có dữ liệu chấm công.</p>
+            </div>
+            {% elif today_record %}
+            <div class="attendance-state">
+                <div class="attendance-times">
+                    <div>
+                        <span>Giờ vào</span>
+                        <strong>{{ today_record.effective_check_in|date:"H:i" }}</strong>
+                    </div>
+                    <div>
+                        <span>Giờ ra</span>
+                        <strong>{{ today_record.effective_check_out|date:"H:i"|default:"--:--" }}</strong>
+                    </div>
+                </div>
+                <div class="attendance-state-footer">
+                    {% if today_record.is_incomplete %}
+                    <span class="status-badge status-working"><i class="bi bi-circle-fill"></i>Đang làm việc</span>
+                    {% else %}
+                    <span class="status-badge status-active"><i class="bi bi-circle-fill"></i>Đã hoàn thành</span>
+                    {% endif %}
+                    <a class="btn btn-sm btn-light border" href="{% url 'attendance:my' %}">Chi tiết</a>
+                </div>
+            </div>
+            {% else %}
+            <div class="status-empty">
+                <div class="status-empty-icon"><i class="bi bi-clock"></i></div>
+                <h3>Chưa chấm công hôm nay</h3>
+                <p>Thực hiện chấm công để hệ thống ghi nhận thời gian làm việc của bạn.</p>
+                <a class="btn btn-primary" href="{% url 'attendance:my' %}"><i class="bi bi-play-circle me-2"></i>Chấm công ngay</a>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
