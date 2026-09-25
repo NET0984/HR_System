@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Nghỉ phép{% endblock %}
+{% block page_title %}<i class="bi bi-calendar2-week me-2"></i>Nghỉ phép{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> Nghỉ phép</div>{% endblock %}
+{% block content %}
+{% if not employee %}
+<div class="app-card">
+    <div class="empty-block py-5">
+        <i class="bi bi-person-x"></i>
+        <strong>Chưa gắn hồ sơ nhân viên</strong>
+        <p>Tài khoản của bạn chưa được liên kết với hồ sơ nhân viên nên chưa thể gửi đơn nghỉ phép.</p>
+    </div>
+</div>
+{% else %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">Đơn nghỉ phép của tôi</h2>
+        <p class="page-subheading"><i class="bi bi-calendar2-week me-1"></i>{{ leave_requests|length }} đơn</p>
+    </div>
+    <a href="{% url 'leave:create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Tạo đơn nghỉ phép</a>
+</div>
+
+<div class="app-card p-0">
+    <div class="table-responsive">
+        <table class="table align-middle data-table mb-0">
+            <thead>
+                <tr>
+                    <th>Loại nghỉ</th>
+                    <th>Từ ngày</th>
+                    <th>Đến ngày</th>
+                    <th>Số ngày</th>
+                    <th>Trạng thái</th>
+                    <th>Gửi lúc</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for leave in leave_requests %}
+                <tr>
+                    <td><span class="fw-semibold">{{ leave.get_leave_type_display }}</span></td>
+                    <td>{{ leave.start_date|date:"d/m/Y" }}</td>
+                    <td>{{ leave.end_date|date:"d/m/Y" }}</td>
+                    <td>{{ leave.days }} ngày</td>
+                    <td><span class="status-badge status-{{ leave.state }}"><i class="bi bi-circle-fill"></i>{{ leave.get_state_display }}</span></td>
+                    <td class="text-muted small">{{ leave.created_at|date:"d/m/Y H:i" }}</td>
+                    <td class="text-end">
+                        <div class="row-actions">
+                            <a href="{% url 'leave:detail' leave.pk %}" class="icon-btn" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
+                            {% if leave.is_pending %}
+                            <form method="post" action="{% url 'leave:cancel' leave.pk %}" class="d-inline" data-confirm="Hủy đơn nghỉ phép này?" data-confirm-title="Hủy đơn nghỉ phép">
+                                {% csrf_token %}
+                                <button type="submit" class="icon-btn icon-btn-danger" title="Hủy đơn"><i class="bi bi-x-lg"></i></button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-block">
+                            <i class="bi bi-calendar2-week"></i>
+                            <strong>Chưa có đơn nghỉ phép</strong>
+                            <p>Bạn chưa gửi đơn nghỉ phép nào.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Duyệt nghỉ phép{% endblock %}
+{% block page_title %}<i class="bi bi-calendar-check me-2"></i>Duyệt nghỉ phép{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> Duyệt nghỉ phép</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">Đơn nghỉ phép</h2>
+        <p class="page-subheading"><i class="bi bi-hourglass-split me-1"></i>{{ pending_count }} đơn đang chờ duyệt</p>
+    </div>
+    <form method="get" class="month-filter">
+        <select name="state" class="form-select" onchange="this.form.submit()">
+            {% for value, label in state_choices %}
+            <option value="{{ value }}" {% if value == selected_state %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+            <option value="all" {% if selected_state == 'all' %}selected{% endif %}>Tất cả</option>
+        </select>
+    </form>
+</div>
+
+<div class="app-card p-0">
+    <div class="table-responsive">
+        <table class="table align-middle data-table mb-0">
+            <thead>
+                <tr>
+                    <th>Nhân viên</th>
+                    <th>Loại nghỉ</th>
+                    <th>Từ ngày</th>
+                    <th>Đến ngày</th>
+                    <th>Số ngày</th>
+                    <th>Trạng thái</th>
+                    <th>Gửi lúc</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for leave in page_obj %}
+                <tr data-href="{% url 'leave:detail' leave.pk %}">
+                    <td>
+                        <div class="cell-person">
+                            <span class="cell-avatar">{{ leave.employee.full_name|slice:':1' }}</span>
+                            <span>
+                                <span class="fw-semibold d-block">{{ leave.employee.full_name }}</span>
+                                <span class="text-muted small">{{ leave.employee.employee_code }}</span>
+                            </span>
+                        </div>
+                    </td>
+                    <td>{{ leave.get_leave_type_display }}</td>
+                    <td>{{ leave.start_date|date:"d/m/Y" }}</td>
+                    <td>{{ leave.end_date|date:"d/m/Y" }}</td>
+                    <td>{{ leave.days }} ngày</td>
+                    <td><span class="status-badge status-{{ leave.state }}"><i class="bi bi-circle-fill"></i>{{ leave.get_state_display }}</span></td>
+                    <td class="text-muted small">{{ leave.created_at|date:"d/m/Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-block">
+                            <i class="bi bi-calendar-check"></i>
+                            <strong>Không có đơn nào</strong>
+                            <p>Chưa có đơn nghỉ phép ở trạng thái này.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination-bar">
+    {% if page_obj.has_previous %}
+    <a href="?state={{ selected_state }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-light border"><i class="bi bi-chevron-left me-1"></i>Trước</a>
+    {% endif %}
+    <span class="pagination-info">Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?state={{ selected_state }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-light border">Sau<i class="bi bi-chevron-right ms-1"></i></a>
+    {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

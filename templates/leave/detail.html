@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}Chi tiết đơn nghỉ phép{% endblock %}
+{% block page_title %}<i class="bi bi-calendar-check me-2"></i>Chi tiết đơn nghỉ phép{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'leave:list' %}">Nghỉ phép</a> <span>/</span> #{{ leave.pk }}</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">{{ leave.employee.full_name }}
+            <span class="status-badge status-{{ leave.state }} ms-2"><i class="bi bi-circle-fill"></i>{{ leave.get_state_display }}</span>
+        </h2>
+        <p class="page-subheading">{{ leave.employee.employee_code }} · {{ leave.get_leave_type_display }} · {{ leave.days }} ngày</p>
+    </div>
+    {% if user.is_hr %}
+    <a href="{% url 'leave:queue' %}" class="btn btn-light border"><i class="bi bi-arrow-left me-1"></i>Về danh sách</a>
+    {% else %}
+    <a href="{% url 'leave:list' %}" class="btn btn-light border"><i class="bi bi-arrow-left me-1"></i>Về danh sách</a>
+    {% endif %}
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">THÔNG TIN ĐƠN</p><h2>Khoảng nghỉ đề nghị</h2></div>
+                <i class="bi bi-calendar2-week heading-icon"></i>
+            </div>
+            <div class="compare-grid">
+                <div class="compare-col">
+                    <span class="compare-label">Từ ngày</span>
+                    <div class="compare-value">{{ leave.start_date|date:"d/m/Y" }}</div>
+                </div>
+                <div class="compare-col compare-col-proposed">
+                    <span class="compare-label">Đến ngày</span>
+                    <div class="compare-value">{{ leave.end_date|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+            <dl class="detail-list mt-3">
+                <div><dt>Loại nghỉ</dt><dd>{{ leave.get_leave_type_display }}</dd></div>
+                <div><dt>Số ngày</dt><dd>{{ leave.days }} ngày</dd></div>
+                <div><dt>Lý do</dt><dd>{{ leave.reason }}</dd></div>
+                <div><dt>Người gửi</dt><dd>{{ leave.requester.username|default:'—' }}</dd></div>
+                <div><dt>Gửi lúc</dt><dd>{{ leave.created_at|date:"d/m/Y H:i" }}</dd></div>
+            </dl>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">XỬ LÝ</p><h2>Duyệt hoặc hủy</h2></div>
+                <i class="bi bi-shield-check heading-icon"></i>
+            </div>
+
+            {% if leave.is_pending %}
+                {% if user.is_hr %}
+                    {% if leave.requester_id == user.id %}
+                    <p class="text-muted mb-0">Bạn là người gửi đơn này nên không thể tự duyệt.</p>
+                    {% else %}
+                    <form method="post" action="{% url 'leave:approve' leave.pk %}" data-confirm="Duyệt đơn nghỉ phép này?" data-confirm-title="Duyệt đơn nghỉ phép">
+                        {% csrf_token %}
+                        <textarea name="decision_reason" class="form-control mb-2" rows="2" placeholder="Ghi chú khi duyệt (tùy chọn)"></textarea>
+                        <button type="submit" class="btn btn-success w-100"><i class="bi bi-check2 me-1"></i>Duyệt đơn</button>
+                    </form>
+                    <hr>
+                    <form method="post" action="{% url 'leave:reject' leave.pk %}" data-confirm="Từ chối đơn nghỉ phép này?" data-confirm-title="Từ chối đơn nghỉ phép">
+                        {% csrf_token %}
+                        <textarea name="decision_reason" class="form-control mb-2" rows="2" placeholder="Lý do từ chối (tùy chọn)"></textarea>
+                        <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-x-lg me-1"></i>Từ chối</button>
+                    </form>
+                    {% endif %}
+                {% elif is_owner %}
+                <p class="text-muted">Đơn đang chờ HR duyệt. Bạn có thể hủy khi chưa được xử lý.</p>
+                <form method="post" action="{% url 'leave:cancel' leave.pk %}" data-confirm="Hủy đơn nghỉ phép này?" data-confirm-title="Hủy đơn nghỉ phép">
+                    {% csrf_token %}
+                    <textarea name="cancellation_reason" class="form-control mb-2" rows="2" placeholder="Lý do hủy (tùy chọn)"></textarea>
+                    <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-x-lg me-1"></i>Hủy đơn</button>
+                </form>
+                {% endif %}
+            {% elif leave.is_approved %}
+                <p class="text-muted small">Đơn đã được duyệt. Nghỉ phép không làm thay đổi dữ liệu chấm công.</p>
+                {% if user.is_hr %}
+                <form method="post" action="{% url 'leave:hr_cancel' leave.pk %}" data-confirm="Hủy đơn đã duyệt này?" data-confirm-title="Hủy đơn nghỉ phép">
+                    {% csrf_token %}
+                    <textarea name="cancellation_reason" class="form-control mb-2" rows="2" placeholder="Lý do hủy (bắt buộc)" required></textarea>
+                    <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-x-lg me-1"></i>Hủy đơn đã duyệt</button>
+                </form>
+                {% endif %}
+                <dl class="detail-list mt-3">
+                    <div><dt>Người duyệt</dt><dd>{{ leave.reviewer.username|default:'—' }}</dd></div>
+                    <div><dt>Duyệt lúc</dt><dd>{{ leave.decided_at|date:"d/m/Y H:i"|default:'—' }}</dd></div>
+                    <div><dt>Ghi chú</dt><dd>{{ leave.decision_reason|default:'—' }}</dd></div>
+                </dl>
+            {% else %}
+                <dl class="detail-list">
+                    <div><dt>Trạng thái</dt><dd>{{ leave.get_state_display }}</dd></div>
+                    {% if leave.reviewer %}
+                    <div><dt>Người xử lý</dt><dd>{{ leave.reviewer.username }}</dd></div>
+                    <div><dt>Xử lý lúc</dt><dd>{{ leave.decided_at|date:"d/m/Y H:i" }}</dd></div>
+                    <div><dt>Ghi chú</dt><dd>{{ leave.decision_reason|default:'—' }}</dd></div>
+                    {% endif %}
+                    {% if leave.cancelled_by %}
+                    <div><dt>Người hủy</dt><dd>{{ leave.cancelled_by.username }}</dd></div>
+                    <div><dt>Hủy lúc</dt><dd>{{ leave.cancelled_at|date:"d/m/Y H:i" }}</dd></div>
+                    <div><dt>Lý do hủy</dt><dd>{{ leave.cancellation_reason|default:'—' }}</dd></div>
+                    {% endif %}
+                </dl>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="app-card mt-4">
+    <div class="section-heading">
+        <div><p class="eyebrow">NHẬT KÝ</p><h2>Lịch sử thao tác</h2></div>
+        <i class="bi bi-clock-history heading-icon"></i>
+    </div>
+    {% if audit_logs %}
+    <ul class="audit-timeline">
+        {% for log in audit_logs %}
+        <li>
+            <span class="audit-dot"></span>
+            <div>
+                <strong>{{ log.action_label }}</strong>
+                <div class="text-muted small">{{ log.created_at|date:"d/m/Y H:i" }} · {{ log.actor.username|default:'Hệ thống' }}</div>
+                {% if log.changes %}
+                <div class="audit-change small">
+                    {% for change in log.changes %}
+                    <div class="audit-change-line">
+                        <span class="audit-field">{{ change.label }}:</span>
+                        <span class="audit-before">{{ change.before }}</span>
+                        <i class="bi bi-arrow-right"></i>
+                        <span class="audit-after">{{ change.after }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if log.reason %}<div class="text-muted small mt-1">Lý do: {{ log.reason }}</div>{% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted mb-0">Chưa có thao tác nào được ghi nhận.</p>
+    {% endif %}
+</div>
+{% endblock %}

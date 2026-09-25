@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Tạo đơn nghỉ phép{% endblock %}
+{% block page_title %}<i class="bi bi-calendar-plus me-2"></i>Tạo đơn nghỉ phép{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'leave:list' %}">Nghỉ phép</a> <span>/</span> Tạo đơn</div>{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-7">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">ĐƠN MỚI</p><h2>Thông tin đơn nghỉ phép</h2></div>
+                <i class="bi bi-calendar-plus heading-icon"></i>
+            </div>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Loại nghỉ <span class="required-mark">*</span></label>
+                        {{ form.leave_type }}
+                        {% if form.leave_type.errors %}<div class="field-error">{{ form.leave_type.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Từ ngày <span class="required-mark">*</span></label>
+                        {{ form.start_date }}
+                        {% if form.start_date.errors %}<div class="field-error">{{ form.start_date.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Đến ngày <span class="required-mark">*</span></label>
+                        {{ form.end_date }}
+                        {% if form.end_date.errors %}<div class="field-error">{{ form.end_date.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Lý do <span class="required-mark">*</span></label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}<div class="field-error">{{ form.reason.errors|striptags }}</div>{% endif %}
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <a href="{% url 'leave:list' %}" class="btn btn-light border"><i class="bi bi-x-lg me-1"></i>Hủy</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i>Gửi đơn</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
