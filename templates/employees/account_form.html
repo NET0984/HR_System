@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Cấp tài khoản{% endblock %}
+{% block page_title %}<i class="bi bi-key me-2"></i>Cấp tài khoản đăng nhập{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'employees:list' %}">Nhân sự</a> <span>/</span> <a href="{% url 'employees:detail' employee.pk %}">{{ employee.employee_code }}</a> <span>/</span> Cấp tài khoản</div>{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-6">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">TÀI KHOẢN MỚI</p><h2>{{ employee.full_name }}</h2></div>
+                <i class="bi bi-person-badge heading-icon"></i>
+            </div>
+            <p class="text-muted small mb-3">Tài khoản này cho phép nhân viên đăng nhập, chấm công và gửi đơn nghỉ phép.</p>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="mb-3">
+                    <label class="form-label">Tên đăng nhập</label>
+                    {{ form.username }}
+                    {% if form.username.errors %}<div class="field-error">{{ form.username.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mật khẩu</label>
+                    {{ form.password }}
+                    {% if form.password.errors %}<div class="field-error">{{ form.password.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Xác nhận mật khẩu</label>
+                    {{ form.confirm_password }}
+                    {% if form.confirm_password.errors %}<div class="field-error">{{ form.confirm_password.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="form-actions">
+                    <a href="{% url 'employees:detail' employee.pk %}" class="btn btn-light border">Hủy</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-key me-1"></i>Cấp tài khoản</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

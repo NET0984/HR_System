@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}{% if is_create %}Thêm nhân viên{% else %}Sửa nhân viên{% endif %}{% endblock %}
+{% block page_title %}<i class="bi bi-person-lines-fill me-2"></i>{% if is_create %}Thêm nhân viên{% else %}Sửa nhân viên{% endif %}{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'employees:list' %}">Nhân sự</a> <span>/</span> {% if is_create %}Thêm mới{% else %}{{ employee.employee_code }}{% endif %}</div>{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-xl-10">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="app-card">
+                <div class="section-heading">
+                    <div><p class="eyebrow">HỒ SƠ NHÂN VIÊN</p><h2>Thông tin cơ bản</h2></div>
+                    <i class="bi bi-person-vcard heading-icon"></i>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Họ và tên <span class="required-mark">*</span></label>
+                        {{ form.full_name }}
+                        {% if form.full_name.errors %}<div class="field-error">{{ form.full_name.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Phòng ban</label>
+                        {{ form.department }}
+                        {% if form.department.errors %}<div class="field-error">{{ form.department.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email công việc</label>
+                        {{ form.work_email }}
+                        {% if form.work_email.errors %}<div class="field-error">{{ form.work_email.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Số điện thoại</label>
+                        {{ form.phone }}
+                        {% if form.phone.errors %}<div class="field-error">{{ form.phone.errors|striptags }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-card mt-4">
+                <div class="section-heading">
+                    <div><p class="eyebrow">THỜI GIAN LÀM VIỆC</p><h2>Ngày vào làm và trạng thái</h2></div>
+                    <i class="bi bi-calendar-range heading-icon"></i>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Ngày vào làm <span class="required-mark">*</span></label>
+                        {{ form.joining_date }}
+                        {% if form.joining_date.errors %}<div class="field-error">{{ form.joining_date.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Ngày kết thúc</label>
+                        {{ form.end_date }}
+                        <div class="form-text">Để trống nếu nhân viên đang làm việc.</div>
+                        {% if form.end_date.errors %}<div class="field-error">{{ form.end_date.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch status-switch">
+                            {{ form.is_active }}
+                            <label class="form-check-label">Nhân viên đang làm việc</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <a href="{% if is_create %}{% url 'employees:list' %}{% else %}{% url 'employees:detail' employee.pk %}{% endif %}" class="btn btn-light border"><i class="bi bi-x-lg me-1"></i>Hủy</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Lưu hồ sơ</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

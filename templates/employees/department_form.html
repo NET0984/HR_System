@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Sửa phòng ban{% endblock %}
+{% block page_title %}<i class="bi bi-diagram-3 me-2"></i>Sửa phòng ban{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'employees:list' %}">Nhân sự</a> <span>/</span> <a href="{% url 'employees:department_list' %}">Phòng ban</a> <span>/</span> Sửa</div>{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-5">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">CẬP NHẬT</p><h2>{{ department.name }}</h2></div>
+                <i class="bi bi-diagram-3 heading-icon"></i>
+            </div>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Tên phòng ban</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<div class="field-error">{{ form.name.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="form-actions">
+                    <a href="{% url 'employees:department_list' %}" class="btn btn-light border">Hủy</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

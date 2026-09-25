@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}{{ employee.full_name }}{% endblock %}
+{% block page_title %}<i class="bi bi-person-vcard me-2"></i>{{ employee.full_name }}{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'employees:list' %}">Nhân sự</a> <span>/</span> {{ employee.employee_code }}</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">{{ employee.full_name }}
+            {% if employee.is_active %}
+            <span class="status-badge status-active ms-2"><i class="bi bi-circle-fill"></i>Đang làm</span>
+            {% else %}
+            <span class="status-badge status-inactive ms-2"><i class="bi bi-circle-fill"></i>Ngừng làm</span>
+            {% endif %}
+        </h2>
+        <p class="page-subheading">{{ employee.employee_code }}{% if employee.department %} · {{ employee.department.name }}{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'employees:edit' employee.pk %}" class="btn btn-light border"><i class="bi bi-pencil me-1"></i>Sửa</a>
+        {% if employee.is_active %}
+        <form method="post" action="{% url 'employees:deactivate' employee.pk %}" data-confirm="Vô hiệu hóa nhân viên này? Lịch sử dữ liệu vẫn được giữ lại." data-confirm-title="Vô hiệu hóa nhân viên">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-person-dash me-1"></i>Vô hiệu hóa</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">THÔNG TIN</p><h2>Hồ sơ nhân viên</h2></div>
+                <i class="bi bi-card-list heading-icon"></i>
+            </div>
+            <dl class="detail-list">
+                <div><dt>Mã nhân viên</dt><dd>{{ employee.employee_code }}</dd></div>
+                <div><dt>Họ và tên</dt><dd>{{ employee.full_name }}</dd></div>
+                <div><dt>Phòng ban</dt><dd>{{ employee.department.name|default:'—' }}</dd></div>
+                <div><dt>Email công việc</dt><dd>{{ employee.work_email|default:'—' }}</dd></div>
+                <div><dt>Số điện thoại</dt><dd>{{ employee.phone|default:'—' }}</dd></div>
+                <div><dt>Ngày vào làm</dt><dd>{{ employee.joining_date|date:'d/m/Y' }}</dd></div>
+                <div><dt>Ngày kết thúc</dt><dd>{{ employee.end_date|date:'d/m/Y'|default:'—' }}</dd></div>
+            </dl>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">ĐĂNG NHẬP</p><h2>Tài khoản</h2></div>
+                <i class="bi bi-shield-lock heading-icon"></i>
+            </div>
+            {% if employee.user %}
+            <dl class="detail-list">
+                <div><dt>Tên đăng nhập</dt><dd>{{ employee.user.username }}</dd></div>
+                <div><dt>Vai trò</dt><dd>{{ employee.user.get_role_display }}</dd></div>
+                <div><dt>Trạng thái</dt><dd>{% if employee.user.is_active %}<span class="text-success">Hoạt động</span>{% else %}<span class="text-danger">Đã khóa</span>{% endif %}</dd></div>
+            </dl>
+            {% else %}
+            <div class="empty-block">
+                <i class="bi bi-person-badge"></i>
+                <p>Nhân viên này chưa có tài khoản đăng nhập.</p>
+                <a href="{% url 'employees:provision_account' employee.pk %}" class="btn btn-primary"><i class="bi bi-key me-1"></i>Cấp tài khoản</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Phòng ban{% endblock %}
+{% block page_title %}<i class="bi bi-diagram-3 me-2"></i>Phòng ban{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'employees:list' %}">Nhân sự</a> <span>/</span> Phòng ban</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">Phòng ban</h2>
+        <p class="page-subheading"><i class="bi bi-diagram-3 me-1"></i>{{ departments|length }} phòng ban</p>
+    </div>
+    <div class="page-toolbar-actions">
+        <a href="{% url 'employees:list' %}" class="btn btn-light border"><i class="bi bi-arrow-left me-1"></i>Danh sách nhân viên</a>
+    </div>
+</div>
+
+<div class="app-card">
+    <div class="section-heading mb-2">
+        <div><p class="eyebrow">THÊM MỚI</p><h2>Thêm phòng ban</h2></div>
+        <i class="bi bi-plus-circle heading-icon"></i>
+    </div>
+    <form method="post" class="inline-create" novalidate>
+        {% csrf_token %}
+        <div class="inline-create-field">
+            {{ form.name }}
+            {% if form.name.errors %}<div class="field-error">{{ form.name.errors|striptags }}</div>{% endif %}
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Thêm</button>
+    </form>
+</div>
+
+<div class="app-card p-0 mt-4">
+    <div class="table-responsive">
+        <table class="table align-middle data-table mb-0">
+            <thead>
+                <tr>
+                    <th>Phòng ban</th>
+                    <th>Số nhân viên</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for department in departments %}
+                <tr>
+                    <td>
+                        <div class="cell-person">
+                            <span class="cell-avatar cell-avatar-soft"><i class="bi bi-diagram-3"></i></span>
+                            <span class="fw-semibold">{{ department.name }}</span>
+                        </div>
+                    </td>
+                    <td><span class="count-chip">{{ department.employees.count }} nhân viên</span></td>
+                    <td class="text-end">
+                        <div class="row-actions">
+                            <a href="{% url 'employees:department_edit' department.pk %}" class="icon-btn" title="Sửa"><i class="bi bi-pencil"></i></a>
+                            <form method="post" action="{% url 'employees:department_delete' department.pk %}" class="d-inline" data-confirm="Xóa phòng ban {{ department.name }}? Thao tác này không thể hoàn tác." data-confirm-title="Xóa phòng ban">
+                                {% csrf_token %}
+                                <button type="submit" class="icon-btn icon-btn-danger" title="Xóa"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">
+                        <div class="empty-block">
+                            <i class="bi bi-diagram-3"></i>
+                            <strong>Chưa có phòng ban</strong>
+                            <p>Thêm phòng ban đầu tiên bằng biểu mẫu bên trên.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
