@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Chi tiết nhật ký{% endblock %}
+{% block page_title %}<i class="bi bi-clock-history me-2"></i>Chi tiết nhật ký{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'audit:list' %}">Nhật ký hoạt động</a> <span>/</span> #{{ log.pk }}</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">{{ log.action_label }}</h2>
+        <p class="page-subheading">{{ log.created_at|date:"d/m/Y H:i:s" }} · {{ log.actor.username|default:'Hệ thống' }}</p>
+    </div>
+    <div class="page-toolbar-actions">
+        {% if entity_url %}
+        <a href="{{ entity_url }}" class="btn btn-light border"><i class="bi bi-box-arrow-up-right me-1"></i>Mở đối tượng</a>
+        {% endif %}
+        <a href="{% url 'audit:list' %}" class="btn btn-light border"><i class="bi bi-arrow-left me-1"></i>Về danh sách</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">THAY ĐỔI</p><h2>Giá trị trước và sau</h2></div>
+                <i class="bi bi-arrow-left-right heading-icon"></i>
+            </div>
+            {% if log.changes %}
+            <div class="audit-change">
+                {% for change in log.changes %}
+                <div class="audit-change-line">
+                    <span class="audit-field">{{ change.label }}:</span>
+                    <span class="audit-before">{{ change.before }}</span>
+                    <i class="bi bi-arrow-right"></i>
+                    <span class="audit-after">{{ change.after }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">Bản ghi này không có thay đổi giá trị.</p>
+            {% endif %}
+        </div>
+
+        <div class="app-card mt-4">
+            <div class="section-heading">
+                <div><p class="eyebrow">LÝ DO</p><h2>Ghi chú của người thực hiện</h2></div>
+                <i class="bi bi-chat-left-text heading-icon"></i>
+            </div>
+            {% if log.reason %}
+            <p class="mb-0">{{ log.reason }}</p>
+            {% else %}
+            <p class="text-muted mb-0">Không có ghi chú.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">THÔNG TIN</p><h2>Chi tiết bản ghi</h2></div>
+                <i class="bi bi-info-circle heading-icon"></i>
+            </div>
+            <dl class="detail-list">
+                <div><dt>Thời gian</dt><dd>{{ log.created_at|date:"d/m/Y H:i:s" }}</dd></div>
+                <div><dt>Người thực hiện</dt><dd>{{ log.actor.username|default:'Hệ thống' }}</dd></div>
+                <div><dt>Hành động</dt><dd>{{ log.action_label }}</dd></div>
+                <div><dt>Đối tượng</dt><dd>{{ log.entity_label }} #{{ log.entity_id }}</dd></div>
+                <div><dt>Mã hành động</dt><dd><span class="code-chip">{{ log.action }}</span></dd></div>
+            </dl>
+        </div>
+    </div>
+</div>
+{% endblock %}

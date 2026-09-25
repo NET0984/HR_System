@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}Chi tiết yêu cầu sửa{% endblock %}
+{% block page_title %}<i class="bi bi-inbox me-2"></i>Chi tiết yêu cầu sửa{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'attendance:correction_queue' %}">Duyệt sửa chấm công</a> <span>/</span> #{{ correction.pk }}</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">{{ correction.employee.full_name }}
+            <span class="status-badge status-{{ correction.state }} ms-2"><i class="bi bi-circle-fill"></i>{{ correction.get_state_display }}</span>
+        </h2>
+        <p class="page-subheading">{{ correction.employee.employee_code }} · Ngày {{ correction.date|date:"d/m/Y" }}</p>
+    </div>
+    <a href="{% url 'attendance:correction_queue' %}" class="btn btn-light border"><i class="bi bi-arrow-left me-1"></i>Về danh sách</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">SO SÁNH</p><h2>Bản gốc và đề xuất</h2></div>
+                <i class="bi bi-arrow-left-right heading-icon"></i>
+            </div>
+            <div class="compare-grid">
+                <div class="compare-col">
+                    <span class="compare-label">Bản gốc (không đổi)</span>
+                    {% if correction.attendance %}
+                    <div class="compare-value">Giờ vào: {{ correction.attendance.original_check_in|date:"H:i"|default:"--:--" }}</div>
+                    <div class="compare-value">Giờ ra: {{ correction.attendance.original_check_out|date:"H:i"|default:"--:--" }}</div>
+                    {% else %}
+                    <div class="compare-value text-muted">Không có bản ghi gốc</div>
+                    {% endif %}
+                </div>
+                <div class="compare-col compare-col-proposed">
+                    <span class="compare-label">Đề xuất</span>
+                    <div class="compare-value">Giờ vào: {{ correction.proposed_check_in|date:"H:i" }}</div>
+                    <div class="compare-value">Giờ ra: {{ correction.proposed_check_out|date:"H:i" }}</div>
+                </div>
+            </div>
+            <dl class="detail-list mt-3">
+                <div><dt>Lý do</dt><dd>{{ correction.reason }}</dd></div>
+                <div><dt>Người gửi</dt><dd>{{ correction.requester.username|default:'—' }}</dd></div>
+                <div><dt>Gửi lúc</dt><dd>{{ correction.created_at|date:"d/m/Y H:i" }}</dd></div>
+                <div><dt>Dựa trên bản sửa</dt><dd>#{{ correction.base_revision }}</dd></div>
+            </dl>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">QUYẾT ĐỊNH</p><h2>Duyệt hoặc từ chối</h2></div>
+                <i class="bi bi-shield-check heading-icon"></i>
+            </div>
+            {% if correction.is_pending %}
+            <p class="text-muted small">Bản gốc luôn được giữ lại. Duyệt yêu cầu chỉ cập nhật giá trị hiệu lực.</p>
+            <form method="post" action="{% url 'attendance:correction_approve' correction.pk %}" data-confirm="Duyệt yêu cầu sửa này? Bản gốc sẽ được giữ nguyên." data-confirm-title="Duyệt yêu cầu">
+                {% csrf_token %}
+                <textarea name="decision_reason" class="form-control mb-2" rows="2" placeholder="Ghi chú khi duyệt (tùy chọn)"></textarea>
+                <button type="submit" class="btn btn-success w-100"><i class="bi bi-check2 me-1"></i>Duyệt yêu cầu</button>
+            </form>
+            <hr>
+            <form method="post" action="{% url 'attendance:correction_reject' correction.pk %}" data-confirm="Từ chối yêu cầu sửa này?" data-confirm-title="Từ chối yêu cầu">
+                {% csrf_token %}
+                <textarea name="decision_reason" class="form-control mb-2" rows="2" placeholder="Lý do từ chối (tùy chọn)"></textarea>
+                <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-x-lg me-1"></i>Từ chối</button>
+            </form>
+            {% else %}
+            <dl class="detail-list">
+                <div><dt>Trạng thái</dt><dd>{{ correction.get_state_display }}</dd></div>
+                <div><dt>Người xử lý</dt><dd>{{ correction.reviewer.username|default:'—' }}</dd></div>
+                <div><dt>Xử lý lúc</dt><dd>{{ correction.decided_at|date:"d/m/Y H:i"|default:'—' }}</dd></div>
+                <div><dt>Ghi chú</dt><dd>{{ correction.decision_reason|default:'—' }}</dd></div>
+            </dl>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="app-card mt-4">
+    <div class="section-heading">
+        <div><p class="eyebrow">NHẬT KÝ</p><h2>Lịch sử thao tác</h2></div>
+        <i class="bi bi-clock-history heading-icon"></i>
+    </div>
+    {% if audit_logs %}
+    <ul class="audit-timeline">
+        {% for log in audit_logs %}
+        <li>
+            <span class="audit-dot"></span>
+            <div>
+                <strong>{{ log.action_label }}</strong>
+                <div class="text-muted small">{{ log.created_at|date:"d/m/Y H:i" }} · {{ log.actor.username|default:'Hệ thống' }}</div>
+                {% if log.changes %}
+                <div class="audit-change small">
+                    {% for change in log.changes %}
+                    <div class="audit-change-line">
+                        <span class="audit-field">{{ change.label }}:</span>
+                        <span class="audit-before">{{ change.before }}</span>
+                        <i class="bi bi-arrow-right"></i>
+                        <span class="audit-after">{{ change.after }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if log.reason %}<div class="text-muted small mt-1">Lý do: {{ log.reason }}</div>{% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted mb-0">Chưa có thao tác nào được ghi nhận.</p>
+    {% endif %}
+</div>
+{% endblock %}

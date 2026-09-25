@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Duyệt sửa chấm công{% endblock %}
+{% block page_title %}<i class="bi bi-inbox me-2"></i>Duyệt sửa chấm công{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> Duyệt sửa chấm công</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">Yêu cầu sửa chấm công</h2>
+        <p class="page-subheading"><i class="bi bi-hourglass-split me-1"></i>{{ pending_count }} yêu cầu đang chờ duyệt</p>
+    </div>
+    <form method="get" class="month-filter">
+        <select name="state" class="form-select" onchange="this.form.submit()">
+            <option value="pending" {% if selected_state == 'pending' %}selected{% endif %}>Chờ duyệt</option>
+            <option value="approved" {% if selected_state == 'approved' %}selected{% endif %}>Đã duyệt</option>
+            <option value="rejected" {% if selected_state == 'rejected' %}selected{% endif %}>Từ chối</option>
+            <option value="superseded" {% if selected_state == 'superseded' %}selected{% endif %}>Đã thay thế</option>
+            <option value="all" {% if selected_state == 'all' %}selected{% endif %}>Tất cả</option>
+        </select>
+    </form>
+</div>
+
+<div class="app-card p-0">
+    <div class="table-responsive">
+        <table class="table align-middle data-table mb-0">
+            <thead>
+                <tr>
+                    <th>Nhân viên</th>
+                    <th>Ngày</th>
+                    <th>Giờ vào đề xuất</th>
+                    <th>Giờ ra đề xuất</th>
+                    <th>Trạng thái</th>
+                    <th>Gửi lúc</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for correction in page_obj %}
+                <tr>
+                    <td>
+                        <div class="cell-person">
+                            <span class="cell-avatar">{{ correction.employee.full_name|slice:':1' }}</span>
+                            <span>
+                                <span class="fw-semibold d-block">{{ correction.employee.full_name }}</span>
+                                <span class="text-muted small">{{ correction.employee.employee_code }}</span>
+                            </span>
+                        </div>
+                    </td>
+                    <td>{{ correction.date|date:"d/m/Y" }}</td>
+                    <td>{{ correction.proposed_check_in|date:"H:i" }}</td>
+                    <td>{{ correction.proposed_check_out|date:"H:i" }}</td>
+                    <td><span class="status-badge status-{{ correction.state }}"><i class="bi bi-circle-fill"></i>{{ correction.get_state_display }}</span></td>
+                    <td class="text-muted small">{{ correction.created_at|date:"d/m/Y H:i" }}</td>
+                    <td class="text-end">
+                        <a href="{% url 'attendance:correction_detail' correction.pk %}" class="btn btn-sm btn-light border"><i class="bi bi-eye me-1"></i>Xem</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-block">
+                            <i class="bi bi-inbox"></i>
+                            <strong>Không có yêu cầu nào</strong>
+                            <p>Chưa có yêu cầu sửa chấm công ở trạng thái này.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination-bar">
+    {% if page_obj.has_previous %}
+    <a href="?state={{ selected_state }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-light border"><i class="bi bi-chevron-left me-1"></i>Trước</a>
+    {% endif %}
+    <span class="pagination-info">Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?state={{ selected_state }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-light border">Sau<i class="bi bi-chevron-right ms-1"></i></a>
+    {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

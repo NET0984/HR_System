@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Yêu cầu sửa chấm công{% endblock %}
+{% block page_title %}<i class="bi bi-pencil-square me-2"></i>Yêu cầu sửa chấm công{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'attendance:my' %}">Chấm công</a> <span>/</span> Yêu cầu sửa</div>{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-7">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">ĐỀ XUẤT SỬA</p><h2>Ngày {{ target_date|date:"d/m/Y" }}</h2></div>
+                <i class="bi bi-clock-history heading-icon"></i>
+            </div>
+
+            <div class="compare-grid mb-4">
+                <div class="compare-col">
+                    <span class="compare-label">Bản ghi hiện tại</span>
+                    {% if attendance %}
+                    <div class="compare-value">Giờ vào: {{ attendance.effective_check_in|date:"H:i"|default:"--:--" }}</div>
+                    <div class="compare-value">Giờ ra: {{ attendance.effective_check_out|date:"H:i"|default:"--:--" }}</div>
+                    {% else %}
+                    <div class="compare-value text-muted">Chưa có bản ghi chấm công cho ngày này</div>
+                    {% endif %}
+                </div>
+                <div class="compare-col compare-col-proposed">
+                    <span class="compare-label">Nội dung đề xuất</span>
+                    <div class="compare-value text-muted">Điền giờ vào và giờ ra đúng với thực tế làm việc.</div>
+                </div>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ target_date|date:'Y-m-d' }}">
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Giờ vào đề xuất <span class="required-mark">*</span></label>
+                        {{ form.proposed_check_in }}
+                        {% if form.proposed_check_in.errors %}<div class="field-error">{{ form.proposed_check_in.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Giờ ra đề xuất <span class="required-mark">*</span></label>
+                        {{ form.proposed_check_out }}
+                        {% if form.proposed_check_out.errors %}<div class="field-error">{{ form.proposed_check_out.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Lý do <span class="required-mark">*</span></label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}<div class="field-error">{{ form.reason.errors|striptags }}</div>{% endif %}
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <a href="{% url 'attendance:my' %}" class="btn btn-light border"><i class="bi bi-x-lg me-1"></i>Hủy</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i>Gửi yêu cầu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

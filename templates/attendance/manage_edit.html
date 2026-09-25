@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Chỉnh sửa chấm công{% endblock %}
+{% block page_title %}<i class="bi bi-pencil-square me-2"></i>Chỉnh sửa chấm công{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'attendance:manage' %}?date={{ target_date|date:'Y-m-d' }}">Bảng chấm công</a> <span>/</span> {{ employee.employee_code }}</div>{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-7">
+        <div class="app-card">
+            <div class="section-heading">
+                <div><p class="eyebrow">CHỈNH SỬA NHANH</p><h2>{{ employee.full_name }} · {{ target_date|date:"d/m/Y" }}</h2></div>
+                <i class="bi bi-pencil-square heading-icon"></i>
+            </div>
+
+            <div class="compare-grid mb-4">
+                <div class="compare-col">
+                    <span class="compare-label">Bản ghi hiện tại</span>
+                    {% if record %}
+                    <div class="compare-value">Giờ vào: {{ record.effective_check_in|date:"H:i"|default:"--:--" }}</div>
+                    <div class="compare-value">Giờ ra: {{ record.effective_check_out|date:"H:i"|default:"--:--" }}</div>
+                    {% else %}
+                    <div class="compare-value text-muted">Chưa có bản ghi chấm công</div>
+                    {% endif %}
+                </div>
+                <div class="compare-col compare-col-proposed">
+                    <span class="compare-label">Lưu ý</span>
+                    <div class="compare-value text-muted">Bản gốc luôn được giữ. Thao tác này được ghi vào nhật ký với nguồn "HR ghi bổ sung".</div>
+                </div>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ target_date|date:'Y-m-d' }}">
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Giờ vào</label>
+                        {{ form.check_in }}
+                        {% if form.check_in.errors %}<div class="field-error">{{ form.check_in.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Giờ ra</label>
+                        {{ form.check_out }}
+                        {% if form.check_out.errors %}<div class="field-error">{{ form.check_out.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Lý do chỉnh sửa <span class="required-mark">*</span></label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}<div class="field-error">{{ form.reason.errors|striptags }}</div>{% endif %}
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <a href="{% url 'attendance:manage' %}?date={{ target_date|date:'Y-m-d' }}" class="btn btn-light border"><i class="bi bi-x-lg me-1"></i>Hủy</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

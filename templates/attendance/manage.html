@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Bảng chấm công{% endblock %}
+{% block page_title %}<i class="bi bi-table me-2"></i>Bảng chấm công{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> Bảng chấm công</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">Chấm công toàn công ty</h2>
+        <p class="page-subheading"><i class="bi bi-calendar3 me-1"></i>{{ selected_date|date:"d/m/Y" }} · {{ rows|length }} nhân viên</p>
+    </div>
+    <a href="{% url 'attendance:correction_queue' %}" class="btn btn-light border"><i class="bi bi-inbox me-1"></i>Duyệt yêu cầu sửa</a>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="filter-group">
+        <input type="text" name="date" class="form-control date-picker" value="{{ selected_date|date:'Y-m-d' }}" placeholder="Chọn ngày">
+        <select name="department" class="form-select">
+            <option value="">Tất cả phòng ban</option>
+            {% for department in departments %}
+            <option value="{{ department.id }}" {% if selected_department == department.id|stringformat:'s' %}selected{% endif %}>{{ department.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="form-select">
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Lọc</button>
+        <a href="{% url 'attendance:manage' %}" class="btn btn-light border"><i class="bi bi-x-lg me-1"></i>Xóa lọc</a>
+    </div>
+</form>
+
+<div class="app-card p-0">
+    <div class="table-responsive">
+        <table class="table align-middle data-table mb-0">
+            <thead>
+                <tr>
+                    <th>Mã NV</th>
+                    <th>Nhân viên</th>
+                    <th>Phòng ban</th>
+                    <th>Giờ vào</th>
+                    <th>Giờ ra</th>
+                    <th>Thời lượng</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr data-href="{% url 'attendance:manage_edit' row.employee.pk %}?date={{ selected_date|date:'Y-m-d' }}">
+                    <td><span class="code-chip">{{ row.employee.employee_code }}</span></td>
+                    <td>
+                        <div class="cell-person">
+                            <span class="cell-avatar">{{ row.employee.full_name|slice:':1' }}</span>
+                            <span class="fw-semibold">{{ row.employee.full_name }}</span>
+                        </div>
+                    </td>
+                    <td>{% if row.employee.department %}<span class="dept-chip">{{ row.employee.department.name }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td>{{ row.record.effective_check_in|date:"H:i"|default:"--:--" }}</td>
+                    <td>{{ row.record.effective_check_out|date:"H:i"|default:"--:--" }}</td>
+                    <td>{{ row.record.duration_display|default:"--" }}</td>
+                    <td>
+                        {% if row.row_status == 'working' %}
+                        <span class="status-badge status-working"><i class="bi bi-circle-fill"></i>Đang làm việc</span>
+                        {% elif row.row_status == 'done' %}
+                        <span class="status-badge status-active"><i class="bi bi-circle-fill"></i>Đã hoàn thành</span>
+                        {% else %}
+                        <span class="status-badge status-inactive"><i class="bi bi-circle-fill"></i>Chưa chấm công</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-block">
+                            <i class="bi bi-table"></i>
+                            <strong>Không có nhân viên phù hợp</strong>
+                            <p>Thử điều chỉnh ngày, phòng ban hoặc trạng thái.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

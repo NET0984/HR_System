@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Nhật ký hoạt động{% endblock %}
+{% block page_title %}<i class="bi bi-clock-history me-2"></i>Nhật ký hoạt động{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> Nhật ký hoạt động</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">Nhật ký hoạt động</h2>
+        <p class="page-subheading"><i class="bi bi-list-check me-1"></i>{{ page_obj.paginator.count }} bản ghi</p>
+    </div>
+    <form method="get" class="filter-group">
+        <select name="action" class="form-select" onchange="this.form.submit()">
+            <option value="">Tất cả hành động</option>
+            {% for value, label in actions %}
+            <option value="{{ value }}" {% if value == selected_action %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="entity_type" class="form-select" onchange="this.form.submit()">
+            <option value="">Tất cả đối tượng</option>
+            {% for value, label in entities %}
+            <option value="{{ value }}" {% if value == selected_entity %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="app-card p-0">
+    <div class="table-responsive">
+        <table class="table align-middle data-table mb-0">
+            <thead>
+                <tr>
+                    <th>Thời gian</th>
+                    <th>Người thực hiện</th>
+                    <th>Hành động</th>
+                    <th>Đối tượng</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr data-href="{% url 'audit:detail' log.pk %}">
+                    <td class="text-muted small">{{ log.created_at|date:"d/m/Y H:i:s" }}</td>
+                    <td>{{ log.actor.username|default:'Hệ thống' }}</td>
+                    <td><span class="fw-semibold">{{ log.action_label }}</span></td>
+                    <td class="text-muted small">{{ log.entity_label }} #{{ log.entity_id }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">
+                        <div class="empty-block">
+                            <i class="bi bi-clock-history"></i>
+                            <strong>Chưa có bản ghi nào</strong>
+                            <p>Chưa có hoạt động nào được ghi nhận.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination-bar">
+    {% if page_obj.has_previous %}
+    <a href="?action={{ selected_action }}&entity_type={{ selected_entity }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-light border"><i class="bi bi-chevron-left me-1"></i>Trước</a>
+    {% endif %}
+    <span class="pagination-info">Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?action={{ selected_action }}&entity_type={{ selected_entity }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-light border">Sau<i class="bi bi-chevron-right ms-1"></i></a>
+    {% endif %}
+</nav>
+{% endif %}
+{% endblock %}
