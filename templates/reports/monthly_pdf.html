@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<style>
+{% if font_path %}
+@font-face { font-family: "ReportFont"; src: url("{{ font_path }}"); }
+{% if font_path_bold %}
+@font-face { font-family: "ReportFont"; font-weight: bold; src: url("{{ font_path_bold }}"); }
+{% endif %}
+body { font-family: "ReportFont"; }
+{% endif %}
+body { font-size: 10px; color: #222; }
+h1 { font-size: 16px; margin: 0 0 4px; }
+.period { color: #555; margin-bottom: 10px; }
+.summary { margin-bottom: 10px; }
+.summary span { margin-right: 14px; }
+table { width: 100%; border-collapse: collapse; }
+th { background-color: #ddebf7; border: 1px solid #aaaaaa; padding: 4px; text-align: left; font-size: 9px; }
+td { border: 1px solid #cccccc; padding: 4px; font-size: 9px; }
+.totals td { font-weight: bold; background-color: #f2f2f2; }
+.footer { margin-top: 12px; color: #777777; font-size: 8px; }
+</style>
+</head>
+<body>
+<h1>BÁO CÁO CHẤM CÔNG THÁNG</h1>
+<div class="period">Kỳ báo cáo: {{ month_start|date:"d/m/Y" }} - {{ month_end|date:"d/m/Y" }}</div>
+
+<div class="summary">
+    <span>Ngày công: {{ totals.completed_days }}</span>
+    <span>Tổng giờ: {{ totals.total_hours }}h</span>
+    <span>Thiếu giờ ra: {{ totals.incomplete_days }}</span>
+    <span>Ngày được sửa: {{ totals.corrected_days }}</span>
+    <span>Ngày nghỉ phép: {{ totals.leave_days }}</span>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Mã NV</th>
+            <th>Nhân viên</th>
+            <th>Phòng ban</th>
+            <th>Ngày công</th>
+            <th>Tổng giờ</th>
+            <th>Thiếu giờ ra</th>
+            <th>Ngày được sửa</th>
+            <th>Nghỉ phép</th>
+            <th>Ghi chú</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <td>{{ row.employee.employee_code }}</td>
+            <td>{{ row.employee.full_name }}</td>
+            <td>{% if row.employee.department %}{{ row.employee.department.name }}{% else %}—{% endif %}</td>
+            <td>{{ row.completed_days }}</td>
+            <td>{{ row.total_hours }}h</td>
+            <td>{{ row.incomplete_days }}</td>
+            <td>{{ row.corrected_days }}</td>
+            <td>{{ row.leave_days }}</td>
+            <td>{% if row.overlap %}Trùng nghỉ phép{% else %}—{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9">Không có dữ liệu trong tháng.</td></tr>
+        {% endfor %}
+    </tbody>
+    {% if rows %}
+    <tfoot>
+        <tr class="totals">
+            <td colspan="3">Tổng cộng</td>
+            <td>{{ totals.completed_days }}</td>
+            <td>{{ totals.total_hours }}h</td>
+            <td>{{ totals.incomplete_days }}</td>
+            <td>{{ totals.corrected_days }}</td>
+            <td>{{ totals.leave_days }}</td>
+            <td></td>
+        </tr>
+    </tfoot>
+    {% endif %}
+</table>
+
+<div class="footer">Xuất từ hệ thống Quản lý nhân sự &amp; Chấm công.</div>
+</body>
+</html>

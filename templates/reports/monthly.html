@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %}Báo cáo tháng{% endblock %}
+{% block page_title %}<i class="bi bi-bar-chart-line-fill me-2"></i>Báo cáo tháng{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> Báo cáo tháng</div>{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+    <div>
+        <h2 class="page-heading">Báo cáo chấm công tháng</h2>
+        <p class="page-subheading"><i class="bi bi-calendar3 me-1"></i>{{ month_start|date:"d/m/Y" }} – {{ month_end|date:"d/m/Y" }} · {{ rows|length }} nhân viên</p>
+    </div>
+    <div class="page-toolbar-actions">
+        <a href="{% url 'reports:export_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-outline-danger"><i class="bi bi-filetype-pdf me-1"></i>Xuất PDF</a>
+        <a href="{% url 'reports:export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success"><i class="bi bi-filetype-xlsx me-1"></i>Xuất Excel</a>
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="filter-group">
+        <select name="month" class="form-select">
+            {% for value, label in month_options %}
+            <option value="{{ value }}" {% if value == selected_month %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="department" class="form-select">
+            <option value="">Tất cả phòng ban</option>
+            {% for department in departments %}
+            <option value="{{ department.id }}" {% if selected_department == department.id|stringformat:'s' %}selected{% endif %}>{{ department.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="employee" class="form-select">
+            <option value="">Tất cả nhân viên</option>
+            {% for employee in employees %}
+            <option value="{{ employee.pk }}" {% if selected_employee == employee.pk|stringformat:'s' %}selected{% endif %}>{{ employee.employee_code }} · {{ employee.full_name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Lọc</button>
+        <a href="{% url 'reports:monthly' %}" class="btn btn-light border"><i class="bi bi-x-lg me-1"></i>Xóa lọc</a>
+    </div>
+</form>
+
+<div class="report-stats mb-4">
+    <div class="report-stat">
+        <span>Ngày công</span>
+        <strong>{{ totals.completed_days }}</strong>
+    </div>
+    <div class="report-stat">
+        <span>Tổng giờ</span>
+        <strong>{{ totals.total_hours }}h</strong>
+    </div>
+    <div class="report-stat">
+        <span>Thiếu giờ ra</span>
+        <strong>{{ totals.incomplete_days }}</strong>
+    </div>
+    <div class="report-stat">
+        <span>Ngày được sửa</span>
+        <strong>{{ totals.corrected_days }}</strong>
+    </div>
+    <div class="report-stat">
+        <span>Ngày nghỉ phép</span>
+        <strong>{{ totals.leave_days }}</strong>
+    </div>
+</div>
+
+<div class="app-card mb-4">
+    <div class="section-heading">
+        <div><p class="eyebrow">BIỂU ĐỒ</p><h2>Tổng giờ làm việc theo nhân viên</h2></div>
+        <i class="bi bi-bar-chart heading-icon"></i>
+    </div>
+    {% if rows %}
+    <div class="chart-box">
+        <canvas id="hoursChart"></canvas>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">Không có dữ liệu để hiển thị.</p>
+    {% endif %}
+</div>
+
+<div class="app-card p-0">
+    <div class="table-responsive">
+        <table class="table align-middle data-table mb-0">
+            <thead>
+                <tr>
+                    <th>Mã NV</th>
+                    <th>Nhân viên</th>
+                    <th>Phòng ban</th>
+                    <th>Ngày công</th>
+                    <th>Tổng giờ</th>
+                    <th>Thiếu giờ ra</th>
+                    <th>Ngày được sửa</th>
+                    <th>Nghỉ phép</th>
+                    <th>Ghi chú</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><span class="code-chip">{{ row.employee.employee_code }}</span></td>
+                    <td class="fw-semibold">{{ row.employee.full_name }}</td>
+                    <td>{% if row.employee.department %}<span class="dept-chip">{{ row.employee.department.name }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td>{{ row.completed_days }}</td>
+                    <td>{{ row.total_hours }}h</td>
+                    <td>{% if row.incomplete_days %}<span class="text-warning fw-semibold">{{ row.incomplete_days }}</span>{% else %}0{% endif %}</td>
+                    <td>{% if row.corrected_days %}<span class="text-primary fw-semibold">{{ row.corrected_days }}</span>{% else %}0{% endif %}</td>
+                    <td>{{ row.leave_days }}</td>
+                    <td>
+                        {% if row.overlap %}
+                        <span class="status-badge status-pending"><i class="bi bi-circle-fill"></i>Trùng nghỉ phép</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9">
+                        <div class="empty-block">
+                            <i class="bi bi-bar-chart"></i>
+                            <strong>Không có dữ liệu</strong>
+                            <p>Không có nhân viên hoặc dữ liệu chấm công trong tháng đã chọn.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if rows %}
+            <tfoot>
+                <tr class="fw-semibold">
+                    <td colspan="3">Tổng cộng</td>
+                    <td>{{ totals.completed_days }}</td>
+                    <td>{{ totals.total_hours }}h</td>
+                    <td>{{ totals.incomplete_days }}</td>
+                    <td>{{ totals.corrected_days }}</td>
+                    <td>{{ totals.leave_days }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+{% if single %}
+<div class="page-toolbar mt-4">
+    <div>
+        <h2 class="page-heading">Chi tiết theo ngày · {{ single.employee.full_name }}</h2>
+        <p class="page-subheading">Bao gồm ngày được sửa, ngày thiếu giờ ra và ngày nghỉ phép đã duyệt</p>
+    </div>
+</div>
+<div class="app-card p-0">
+    <div class="table-responsive">
+        <table class="table align-middle data-table mb-0">
+            <thead>
+                <tr>
+                    <th>Ngày</th>
+                    <th>Giờ vào</th>
+                    <th>Giờ ra</th>
+                    <th>Thời lượng</th>
+                    <th>Trạng thái</th>
+                    <th>Nghỉ phép</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in single.records %}
+                <tr>
+                    <td class="fw-semibold">{{ record.date|date:"d/m/Y" }}</td>
+                    <td>{{ record.effective_check_in|date:"H:i"|default:"--:--" }}</td>
+                    <td>{{ record.effective_check_out|date:"H:i"|default:"--:--" }}</td>
+                    <td>{{ record.duration_display|default:"--" }}</td>
+                    <td>
+                        {% if record.is_incomplete %}
+                        <span class="status-badge status-pending"><i class="bi bi-circle-fill"></i>Thiếu giờ ra</span>
+                        {% else %}
+                        <span class="status-badge status-active"><i class="bi bi-circle-fill"></i>Đã hoàn thành</span>
+                        {% endif %}
+                        {% if record.revision > 1 or record.source == 'correction' %}
+                        <span class="status-badge status-working"><i class="bi bi-circle-fill"></i>Đã sửa</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if record.date|date:"Y-m-d" in leave_date_strings %}
+                        <span class="status-badge status-approved"><i class="bi bi-circle-fill"></i>Nghỉ phép</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">Nhân viên chưa có bản ghi chấm công trong tháng.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{{ chart_labels|json_script:"chartLabels" }}
+{{ chart_values|json_script:"chartValues" }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+    (function () {
+        const canvas = document.getElementById('hoursChart');
+        if (!canvas || !window.Chart) {
+            return;
+        }
+        const labels = JSON.parse(document.getElementById('chartLabels').textContent);
+        const values = JSON.parse(document.getElementById('chartValues').textContent);
+        new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Tổng giờ',
+                    data: values,
+                    backgroundColor: '#2d82f0',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } },
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    })();
+</script>
+{% endblock %}
