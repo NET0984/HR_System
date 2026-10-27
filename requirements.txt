@@ -3,3 +3,5 @@ PyMySQL==1.2.0
 python-dotenv==1.1.1
 xhtml2pdf==0.2.19
 openpyxl
+Pillow==11.2.1
+onnxruntime

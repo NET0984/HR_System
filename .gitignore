@@ -7,3 +7,4 @@ staticfiles/
 .vscode/
 venv/
 .venv/
+models/

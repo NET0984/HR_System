@@ -25,8 +25,11 @@ def _format_date(value):
 class AuditLog(models.Model):
     ACTION_LABELS = {
         'attendance.check_in': 'Chấm công vào',
+        'attendance.check_in_face': 'Chấm công vào bằng khuôn mặt',
         'attendance.check_out': 'Chấm công ra',
+        'attendance.check_out_face': 'Chấm công ra bằng khuôn mặt',
         'attendance.hr_edit': 'HR chỉnh sửa chấm công',
+        'face.enroll': 'Đăng ký khuôn mặt',
         'correction.create': 'Gửi yêu cầu sửa',
         'correction.approve': 'Duyệt yêu cầu sửa',
         'correction.reject': 'Từ chối yêu cầu sửa',
@@ -41,6 +44,7 @@ class AuditLog(models.Model):
         'Attendance': 'Chấm công',
         'CorrectionRequest': 'Yêu cầu sửa',
         'LeaveRequest': 'Đơn nghỉ phép',
+        'FaceProfile': 'Khuôn mặt',
     }
     FIELD_LABELS = {
         'effective_check_in': 'Giờ vào',
@@ -52,6 +56,10 @@ class AuditLog(models.Model):
         'revision': 'Lần sửa',
         'base_revision': 'Bản sửa gốc',
         'source': 'Nguồn',
+        'face_score': 'Độ khớp khuôn mặt khi vào',
+        'check_out_face_score': 'Độ khớp khuôn mặt khi ra',
+        'employee': 'Nhân viên',
+        'enrolled': 'Đã đăng ký',
         'date': 'Ngày',
         'leave_type': 'Loại nghỉ',
         'start_date': 'Từ ngày',
@@ -62,6 +70,7 @@ class AuditLog(models.Model):
         'browser': 'Chấm công trên web',
         'correction': 'Sửa chấm công',
         'hr_historical': 'HR ghi bổ sung',
+        'face': 'Chấm công bằng khuôn mặt',
         'annual': 'Phép năm',
         'sick': 'Nghỉ ốm',
         'personal': 'Việc riêng',

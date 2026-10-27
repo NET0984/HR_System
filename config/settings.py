@@ -146,4 +146,16 @@ AUTH_USER_MODEL = 'accounts.User'
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+# Chấm công bằng khuôn mặt (mô phỏng: so khớp ảnh, không lưu ảnh gốc)
+FACE_ENABLED = os.getenv('FACE_ENABLED', '0') == '1'
+# auto: dùng ArcFace nếu có model, ngược lại quay về average hash.
+FACE_ENGINE = os.getenv('FACE_ENGINE', 'auto').lower()
+FACE_EMBEDDING_THRESHOLD = float(os.getenv('FACE_EMBEDDING_THRESHOLD', '0.80'))
+FACE_HASH_THRESHOLD = float(os.getenv('FACE_HASH_THRESHOLD', '0.90'))
+FACE_MAX_UPLOAD_BYTES = int(os.getenv('FACE_MAX_UPLOAD_BYTES', str(5 * 1024 * 1024)))
+FACE_MAX_ENROLL_IMAGES = int(os.getenv('FACE_MAX_ENROLL_IMAGES', '5'))
+FACE_AUTO_CAPTURE_SECONDS = int(os.getenv('FACE_AUTO_CAPTURE_SECONDS', '4'))
+FACE_ENROLL_INTERVAL_SECONDS = int(os.getenv('FACE_ENROLL_INTERVAL_SECONDS', '3'))
+FACE_MODEL_DIR = Path(os.getenv('FACE_MODEL_DIR', str(BASE_DIR / 'models' / 'face')))
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -6,10 +6,12 @@ class Attendance(models.Model):
     SOURCE_BROWSER = 'browser'
     SOURCE_CORRECTION = 'correction'
     SOURCE_HR_HISTORICAL = 'hr_historical'
+    SOURCE_FACE = 'face'
     SOURCE_CHOICES = [
         (SOURCE_BROWSER, 'Chấm công trên web'),
         (SOURCE_CORRECTION, 'Sửa chấm công'),
         (SOURCE_HR_HISTORICAL, 'HR ghi bổ sung'),
+        (SOURCE_FACE, 'Chấm công bằng khuôn mặt'),
     ]
 
     STATUS_WORKING = 'working'
@@ -27,6 +29,8 @@ class Attendance(models.Model):
     effective_check_out = models.DateTimeField(null=True, blank=True)
     revision = models.PositiveIntegerField(default=1)
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=SOURCE_BROWSER)
+    face_score = models.FloatField(null=True, blank=True)
+    check_out_face_score = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -124,3 +128,60 @@ class CorrectionRequest(models.Model):
     @property
     def is_pending(self):
         return self.state == self.STATE_PENDING
+
+
+class FaceProfile(models.Model):
+    """Hồ sơ khuôn mặt đã đăng ký. Chỉ lưu hash, không lưu ảnh gốc."""
+
+    employee = models.OneToOneField(
+        'employees.Employee',
+        on_delete=models.CASCADE,
+        related_name='face_profile',
+    )
+    is_active = models.BooleanField(default=True)
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f'{self.employee.employee_code} (khuôn mặt)'
+
+
+class FaceSample(models.Model):
+    """Một mẫu hash của khuôn mặt (ảnh gốc hoặc biến thể augmentation)."""
+
+    VARIANT_ORIGINAL = 'original'
+    VARIANT_FLIP = 'flip'
+    VARIANT_ROTATE_LEFT = 'rotate_left'
+    VARIANT_ROTATE_RIGHT = 'rotate_right'
+    VARIANT_ZOOM_IN = 'zoom_in'
+    VARIANT_ZOOM_OUT = 'zoom_out'
+    VARIANT_CHOICES = [
+        (VARIANT_ORIGINAL, 'Ảnh gốc'),
+        (VARIANT_FLIP, 'Lật ngang'),
+        (VARIANT_ROTATE_LEFT, 'Xoay trái 6°'),
+        (VARIANT_ROTATE_RIGHT, 'Xoay phải 6°'),
+        (VARIANT_ZOOM_IN, 'Phóng gần'),
+        (VARIANT_ZOOM_OUT, 'Thu xa'),
+    ]
+
+    profile = models.ForeignKey(
+        FaceProfile,
+        on_delete=models.CASCADE,
+        related_name='samples',
+    )
+    image_hash = models.CharField(max_length=16)
+    embedding = models.JSONField(null=True, blank=True)
+    variant = models.CharField(max_length=20, choices=VARIANT_CHOICES, default=VARIANT_ORIGINAL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+        constraints = [
+            models.UniqueConstraint(fields=['profile', 'image_hash'], name='unique_face_sample_hash'),
+        ]
+
+    def __str__(self):
+        return f'{self.profile.employee.employee_code} {self.variant}'
