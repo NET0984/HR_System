@@ -221,6 +221,36 @@ class LeaveWorkflowTests(TestCase):
         detail_response = self.client.get(reverse('leave:detail', args=[other_leave.pk]))
         self.assertRedirects(detail_response, reverse('leave:list'))
 
+    def test_leave_list_rows_link_to_detail(self):
+        leave = self._make_leave(LeaveRequest.STATE_PENDING, 2, 3)
+        self.client.login(username='emp-user', password='test-password-123')
+
+        response = self.client.get(reverse('leave:list'))
+
+        self.assertContains(
+            response,
+            f'data-href="{reverse("leave:detail", args=[leave.pk])}"',
+        )
+        self.assertNotContains(response, '<th class="text-end">Thao tác</th>')
+
+    def test_hr_detail_highlights_approval_section(self):
+        leave = self._make_leave(LeaveRequest.STATE_PENDING, 2, 3)
+        self.client.login(username='hr-user', password='test-password-123')
+
+        response = self.client.get(reverse('leave:detail', args=[leave.pk]))
+
+        self.assertContains(response, 'class="nav-link active" href="/leave/queue/"')
+        self.assertContains(response, 'href="/leave/queue/">Duyệt nghỉ phép</a>')
+
+    def test_employee_detail_highlights_personal_section(self):
+        leave = self._make_leave(LeaveRequest.STATE_PENDING, 2, 3)
+        self.client.login(username='emp-user', password='test-password-123')
+
+        response = self.client.get(reverse('leave:detail', args=[leave.pk]))
+
+        self.assertContains(response, 'class="nav-link active" href="/leave/"')
+        self.assertContains(response, 'href="/leave/">Nghỉ phép</a>')
+
     def test_queue_rows_link_to_detail(self):
         leave = self._make_leave(LeaveRequest.STATE_PENDING, 10, 12)
         self.client.login(username='hr-user', password='test-password-123')

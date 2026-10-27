@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Chi tiết đơn nghỉ phép{% endblock %}
 {% block page_title %}<i class="bi bi-calendar-check me-2"></i>Chi tiết đơn nghỉ phép{% endblock %}
-{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> <a href="{% url 'leave:list' %}">Nghỉ phép</a> <span>/</span> #{{ leave.pk }}</div>{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumb-line">Tổng quan <span>/</span> {% if user.is_hr %}<a href="{% url 'leave:queue' %}">Duyệt nghỉ phép</a>{% else %}<a href="{% url 'leave:list' %}">Nghỉ phép</a>{% endif %} <span>/</span> #{{ leave.pk }}</div>{% endblock %}
 {% block content %}
 <div class="page-toolbar">
     <div>

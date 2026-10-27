@@ -47,8 +47,8 @@
                                 data-seen-url="{% url 'accounts:notifications_seen' %}"
                                 aria-label="Thông báo{% if notifications.count %}, {{ notifications.count }} thông báo mới{% endif %}">
                             <i class="bi bi-bell"></i>
-                            {% if notifications.count %}
-                            <span class="notification-count">{% if notifications.count > 9 %}9+{% else %}{{ notifications.count }}{% endif %}</span>
+                            {% if notifications.count or notifications.work_count %}
+                            <span class="notification-count" data-work="{{ notifications.work_count }}">{% if notifications.count %}{% if notifications.count > 9 %}9+{% else %}{{ notifications.count }}{% endif %}{% else %}{% if notifications.work_count > 9 %}9+{% else %}{{ notifications.work_count }}{% endif %}{% endif %}</span>
                             {% endif %}
                         </button>
                         <div class="dropdown-menu dropdown-menu-end notification-menu">
@@ -296,7 +296,12 @@
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 }).then(function () {
-                    badge.remove();
+                    const work = parseInt(badge.dataset.work || '0', 10);
+                    if (work > 0) {
+                        badge.textContent = work > 9 ? '9+' : String(work);
+                    } else {
+                        badge.remove();
+                    }
                     document.querySelectorAll('.notification-new').forEach(function (mark) {
                         mark.remove();
                     });

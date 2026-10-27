@@ -172,6 +172,26 @@ class NotificationTests(TestCase):
         self.assertEqual(len(notifications['recent']), 1)
         self.assertFalse(notifications['recent'][0]['is_new'])
 
+    def test_hr_badge_keeps_pending_work_after_seen(self):
+        target = date.today() + timedelta(days=10)
+        LeaveRequest.objects.create(
+            employee=self.other,
+            leave_type=LeaveRequest.TYPE_ANNUAL,
+            start_date=target,
+            end_date=target,
+            reason='Nghỉ phép',
+            state=LeaveRequest.STATE_PENDING,
+        )
+        self.client.login(username='hr-user', password='test-password-123')
+        self.assertContains(self._home(), 'data-work="1"')
+
+        self.client.post(reverse('accounts:notifications_seen'))
+
+        response = self._home()
+        self.assertEqual(response.context['notifications']['count'], 0)
+        self.assertEqual(response.context['notifications']['work_count'], 1)
+        self.assertContains(response, 'data-work="1"')
+
     def test_employee_pending_request_does_not_notify(self):
         target = date.today() + timedelta(days=10)
         LeaveRequest.objects.create(

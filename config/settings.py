@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 import pymysql
+from django.contrib.messages import constants as message_constants
 from dotenv import load_dotenv
 
 pymysql.install_as_MySQLdb()
@@ -132,6 +133,10 @@ TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
 
 USE_TZ = True
+
+MESSAGE_TAGS = {
+    message_constants.ERROR: 'danger',
+}
 
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'accounts:home'

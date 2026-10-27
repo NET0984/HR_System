@@ -17,7 +17,7 @@
         <a class="nav-link {% if request.resolver_match.url_name == 'my' %}active{% endif %}" href="{% url 'attendance:my' %}">
             <span class="nav-icon"><i class="bi bi-clock-history"></i></span><span class="nav-label">Chấm công</span>
         </a>
-        <a class="nav-link {% if request.resolver_match.app_name == 'leave' and request.resolver_match.url_name != 'queue' %}active{% endif %}" href="{% url 'leave:list' %}">
+        <a class="nav-link {% if request.resolver_match.app_name == 'leave' and request.resolver_match.url_name == 'list' or request.resolver_match.app_name == 'leave' and request.resolver_match.url_name == 'create' or request.resolver_match.app_name == 'leave' and request.resolver_match.url_name == 'detail' and not user.is_hr %}active{% endif %}" href="{% url 'leave:list' %}">
             <span class="nav-icon"><i class="bi bi-calendar2-week"></i></span><span class="nav-label">Nghỉ phép</span>
         </a>
 
@@ -29,7 +29,7 @@
         <a class="nav-link {% if request.resolver_match.url_name == 'correction_queue' %}active{% endif %}" href="{% url 'attendance:correction_queue' %}">
             <span class="nav-icon"><i class="bi bi-pencil-square"></i></span><span class="nav-label">Duyệt sửa chấm công</span>
         </a>
-        <a class="nav-link {% if request.resolver_match.url_name == 'queue' %}active{% endif %}" href="{% url 'leave:queue' %}">
+        <a class="nav-link {% if request.resolver_match.app_name == 'leave' and request.resolver_match.url_name == 'queue' or request.resolver_match.app_name == 'leave' and request.resolver_match.url_name == 'detail' and user.is_hr %}active{% endif %}" href="{% url 'leave:queue' %}">
             <span class="nav-icon"><i class="bi bi-calendar-check"></i></span><span class="nav-label">Duyệt nghỉ phép</span>
         </a>
         <a class="nav-link {% if request.resolver_match.url_name == 'manage' or request.resolver_match.url_name == 'manage_edit' %}active{% endif %}" href="{% url 'attendance:manage' %}">

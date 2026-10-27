@@ -90,16 +90,20 @@ def notifications(request):
         submissions.sort(key=lambda item: item['at'], reverse=True)
         count = _mark_unread(submissions, seen_at)
 
+        pending_corrections = CorrectionRequest.objects.filter(
+            state=CorrectionRequest.STATE_PENDING
+        ).count()
+        pending_leave = LeaveRequest.objects.filter(
+            state=LeaveRequest.STATE_PENDING
+        ).count()
+
         return {'notifications': {
             'is_hr': True,
             'count': count,
+            'work_count': pending_corrections + pending_leave,
             'recent': submissions[:5],
-            'pending_corrections': CorrectionRequest.objects.filter(
-                state=CorrectionRequest.STATE_PENDING
-            ).count(),
-            'pending_leave': LeaveRequest.objects.filter(
-                state=LeaveRequest.STATE_PENDING
-            ).count(),
+            'pending_corrections': pending_corrections,
+            'pending_leave': pending_leave,
             'present_today': Attendance.objects.filter(date=today).count(),
         }}
 
@@ -108,6 +112,7 @@ def notifications(request):
         return {'notifications': {
             'is_hr': False,
             'count': 0,
+            'work_count': 0,
             'recent': [],
         }}
 
@@ -126,5 +131,6 @@ def notifications(request):
     return {'notifications': {
         'is_hr': False,
         'count': count,
+        'work_count': 0,
         'recent': responses[:5],
     }}
