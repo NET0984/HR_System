@@ -245,7 +245,34 @@
                     altInput: true,
                     altFormat: 'd/m/Y',
                     allowInput: true,
-                    altInputClass: 'form-control'
+                    altInputClass: 'form-control',
+                    onChange: function () {
+                        if (element.hasAttribute('data-auto-submit-date') && element.form) {
+                            element.form.submit();
+                        }
+                    }
+                });
+            });
+        })();
+
+        (function () {
+            document.querySelectorAll('[data-auto-submit]').forEach(function (element) {
+                element.addEventListener('change', function () {
+                    if (element.form) {
+                        element.form.submit();
+                    }
+                });
+            });
+
+            document.querySelectorAll('[data-auto-submit-search]').forEach(function (element) {
+                var timer = null;
+                element.addEventListener('input', function () {
+                    clearTimeout(timer);
+                    timer = setTimeout(function () {
+                        if (element.form) {
+                            element.form.submit();
+                        }
+                    }, 400);
                 });
             });
         })();

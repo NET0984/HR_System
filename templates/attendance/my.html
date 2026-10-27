@@ -110,12 +110,11 @@
                     <th>Giờ ra</th>
                     <th>Thời lượng</th>
                     <th>Trạng thái</th>
-                    <th class="text-end">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 {% for record in page_obj %}
-                <tr>
+                <tr data-href="{% url 'attendance:correction_create' %}?date={{ record.date|date:'Y-m-d' }}">
                     <td><span class="fw-semibold">{{ record.date|date:"d/m/Y" }}</span></td>
                     <td>{{ record.effective_check_in|date:"H:i"|default:"--:--" }}</td>
                     <td>{{ record.effective_check_out|date:"H:i"|default:"--:--" }}</td>
@@ -127,13 +126,10 @@
                         <span class="status-badge status-active"><i class="bi bi-circle-fill"></i>Đã hoàn thành</span>
                         {% endif %}
                     </td>
-                    <td class="text-end">
-                        <a href="{% url 'attendance:correction_create' %}?date={{ record.date|date:'Y-m-d' }}" class="btn btn-sm btn-light border" title="Yêu cầu sửa"><i class="bi bi-pencil"></i></a>
-                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6">
+                    <td colspan="5">
                         <div class="empty-block">
                             <i class="bi bi-calendar-x"></i>
                             <strong>Không có dữ liệu chấm công</strong>

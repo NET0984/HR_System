@@ -83,10 +83,17 @@ def _build_report_data(request):
     employees = Employee.objects.select_related('department').order_by('employee_code')
     if selected_department:
         employees = employees.filter(department_id=selected_department)
-    if selected_employee:
-        employees = employees.filter(pk=selected_employee)
 
-    employee_ids = list(employees.values_list('pk', flat=True))
+    # Chọn phòng ban thì danh sách nhân viên chỉ còn nhân viên của phòng ban đó.
+    if selected_employee and not employees.filter(pk=selected_employee).exists():
+        selected_employee = ''
+
+    employee_options = employees
+    report_employees = employees
+    if selected_employee:
+        report_employees = employees.filter(pk=selected_employee)
+
+    employee_ids = list(report_employees.values_list('pk', flat=True))
 
     attendance_records = Attendance.objects.filter(
         employee_id__in=employee_ids,
@@ -109,7 +116,7 @@ def _build_report_data(request):
         leave_by_employee.setdefault(leave.employee_id, []).append(leave)
 
     rows = []
-    for employee in employees:
+    for employee in report_employees:
         records = attendance_by_employee.get(employee.pk, [])
         completed = [r for r in records if r.effective_check_in and r.effective_check_out]
         incomplete = [r for r in records if r.effective_check_in and not r.effective_check_out]
@@ -166,7 +173,7 @@ def _build_report_data(request):
         'selected_employee': selected_employee,
         'month_options': _month_options(today),
         'departments': Department.objects.all(),
-        'employees': Employee.objects.order_by('employee_code'),
+        'employees': employee_options,
         'rows': rows,
         'totals': totals,
         'chart_labels': [row['employee'].full_name for row in rows],
@@ -175,6 +182,11 @@ def _build_report_data(request):
         'leave_date_strings': leave_date_strings,
         'month_start': month_start,
         'month_end': month_end,
+        'is_filtered': bool(
+            selected_department
+            or selected_employee
+            or selected_month != f'{today.year:04d}-{today.month:02d}'
+        ),
         'font_path': _pdf_font_path(),
         'font_path_bold': _pdf_font_bold_path(),
     }

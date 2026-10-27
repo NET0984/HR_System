@@ -222,6 +222,24 @@ class AttendanceTests(TestCase):
         self.assertEqual(Attendance.objects.filter(employee=self.employee).count(), 1)
 
 
+    def test_history_rows_link_to_correction(self):
+        self.client.login(username='emp-user', password='test-password-123')
+        Attendance.objects.create(
+            employee=self.employee,
+            date=date.today(),
+            original_check_in=timezone.now(),
+            effective_check_in=timezone.now(),
+        )
+
+        response = self.client.get(reverse('attendance:my'))
+
+        self.assertContains(
+            response,
+            f'data-href="{reverse("attendance:correction_create")}?date={date.today():%Y-%m-%d}"',
+        )
+        self.assertNotContains(response, '<th class="text-end">Thao tác</th>')
+
+
 class ConcurrentAttendanceTests(TransactionTestCase):
     def setUp(self):
         self.user = User.objects.create_user(
@@ -452,6 +470,20 @@ class HRAttendanceManageTests(TestCase):
 
     def _edit_url(self):
         return reverse('attendance:manage_edit', args=[self.employee.pk])
+
+    def test_manage_hides_clear_filter_when_default(self):
+        self.client.login(username='hr-user', password='test-password-123')
+
+        response = self.client.get(reverse('attendance:manage'))
+
+        self.assertNotContains(response, 'Xóa lọc')
+
+    def test_manage_shows_clear_filter_when_filtered(self):
+        self.client.login(username='hr-user', password='test-password-123')
+
+        response = self.client.get(reverse('attendance:manage'), {'status': 'none'})
+
+        self.assertContains(response, 'Xóa lọc')
 
     def test_employee_cannot_access_manage(self):
         self.client.login(username='emp-user', password='test-password-123')

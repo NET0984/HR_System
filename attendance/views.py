@@ -598,6 +598,9 @@ def attendance_manage(request):
         'departments': Department.objects.all(),
         'selected_department': department_id,
         'selected_status': status,
+        'is_filtered': bool(
+            department_id or status or selected_date != timezone.localdate()
+        ),
         'rows': rows,
         'status_choices': [
             ('', 'Tất cả trạng thái'),

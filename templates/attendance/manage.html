@@ -13,20 +13,21 @@
 
 <form method="get" class="filter-bar">
     <div class="filter-group">
-        <input type="text" name="date" class="form-control date-picker" value="{{ selected_date|date:'Y-m-d' }}" placeholder="Chọn ngày">
-        <select name="department" class="form-select">
+        <input type="text" name="date" class="form-control date-picker" value="{{ selected_date|date:'Y-m-d' }}" placeholder="Chọn ngày" data-auto-submit-date>
+        <select name="department" class="form-select" data-auto-submit>
             <option value="">Tất cả phòng ban</option>
             {% for department in departments %}
             <option value="{{ department.id }}" {% if selected_department == department.id|stringformat:'s' %}selected{% endif %}>{{ department.name }}</option>
             {% endfor %}
         </select>
-        <select name="status" class="form-select">
+        <select name="status" class="form-select" data-auto-submit>
             {% for value, label in status_choices %}
             <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
-        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Lọc</button>
+        {% if is_filtered %}
         <a href="{% url 'attendance:manage' %}" class="btn btn-light border"><i class="bi bi-x-lg me-1"></i>Xóa lọc</a>
+        {% endif %}
     </div>
 </form>
 

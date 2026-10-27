@@ -21,21 +21,20 @@
 <form method="get" class="filter-bar">
     <div class="filter-search">
         <i class="bi bi-search"></i>
-        <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Tìm theo tên hoặc mã nhân viên">
+        <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Tìm theo tên hoặc mã nhân viên" data-auto-submit-search>
     </div>
     <div class="filter-group">
-        <select name="department" class="form-select">
+        <select name="department" class="form-select" data-auto-submit>
             <option value="">Tất cả phòng ban</option>
             {% for department in departments %}
             <option value="{{ department.id }}" {% if selected_department == department.id|stringformat:'s' %}selected{% endif %}>{{ department.name }}</option>
             {% endfor %}
         </select>
-        <select name="status" class="form-select">
+        <select name="status" class="form-select" data-auto-submit>
             <option value="">Tất cả trạng thái</option>
             <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Đang làm việc</option>
             <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Ngừng làm việc</option>
         </select>
-        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Lọc</button>
         {% if query or selected_department or selected_status %}
         <a href="{% url 'employees:list' %}" class="btn btn-light border"><i class="bi bi-x-lg me-1"></i>Xóa lọc</a>
         {% endif %}

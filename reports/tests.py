@@ -57,6 +57,41 @@ class MonthlyReportTests(TestCase):
             source=source,
         )
 
+    def test_report_hides_clear_filter_when_default(self):
+        self.client.login(username='hr-user', password='test-password-123')
+
+        response = self.client.get(reverse('reports:monthly'), {'month': self.month})
+
+        self.assertNotContains(response, 'Xóa lọc')
+
+    def test_report_shows_clear_filter_when_department_selected(self):
+        self.client.login(username='hr-user', password='test-password-123')
+
+        response = self.client.get(reverse('reports:monthly'), {
+            'month': self.month,
+            'department': self.department.pk,
+        })
+
+        self.assertContains(response, 'Xóa lọc')
+
+    def test_employee_options_filtered_by_department(self):
+        other_department = Department.objects.create(name='Kinh doanh')
+        other_employee = Employee.objects.create(
+            employee_code='NV0002',
+            full_name='Trần Quốc Bảo',
+            joining_date=date(2024, 1, 15),
+            department=other_department,
+        )
+        self.client.login(username='hr-user', password='test-password-123')
+
+        response = self.client.get(reverse('reports:monthly'), {
+            'month': self.month,
+            'department': self.department.pk,
+        })
+
+        self.assertContains(response, self.employee.full_name)
+        self.assertNotContains(response, other_employee.full_name)
+
     def test_employee_cannot_view_report(self):
         self.client.login(username='emp-user', password='test-password-123')
 

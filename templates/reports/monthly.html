@@ -16,25 +16,26 @@
 
 <form method="get" class="filter-bar">
     <div class="filter-group">
-        <select name="month" class="form-select">
+        <select name="month" class="form-select" data-auto-submit>
             {% for value, label in month_options %}
             <option value="{{ value }}" {% if value == selected_month %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
-        <select name="department" class="form-select">
+        <select name="department" class="form-select" data-auto-submit>
             <option value="">Tất cả phòng ban</option>
             {% for department in departments %}
             <option value="{{ department.id }}" {% if selected_department == department.id|stringformat:'s' %}selected{% endif %}>{{ department.name }}</option>
             {% endfor %}
         </select>
-        <select name="employee" class="form-select">
+        <select name="employee" class="form-select" data-auto-submit>
             <option value="">Tất cả nhân viên</option>
             {% for employee in employees %}
             <option value="{{ employee.pk }}" {% if selected_employee == employee.pk|stringformat:'s' %}selected{% endif %}>{{ employee.employee_code }} · {{ employee.full_name }}</option>
             {% endfor %}
         </select>
-        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Lọc</button>
+        {% if is_filtered %}
         <a href="{% url 'reports:monthly' %}" class="btn btn-light border"><i class="bi bi-x-lg me-1"></i>Xóa lọc</a>
+        {% endif %}
     </div>
 </form>
 

@@ -1014,7 +1014,8 @@
 }
 
 .filter-bar .form-select {
-    min-width: 160px;
+    flex: 0 0 auto;
+    min-width: 210px;
     width: auto;
 }
 
@@ -1070,7 +1071,7 @@
 }
 
 .table-link:hover {
-    text-decoration: underline;
+    text-decoration: none;
 }
 
 .code-chip {
@@ -1408,13 +1409,13 @@
 
 .attendance-today {
     align-items: center;
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
     gap: 1.25rem;
-    justify-content: space-between;
+    grid-template-columns: 1fr auto 1fr;
 }
 
 .attendance-today-info {
+    justify-self: start;
     min-width: 180px;
 }
 
@@ -1427,9 +1428,9 @@
 
 .attendance-times {
     display: flex;
-    flex: 1 1 auto;
     gap: 1.5rem;
     justify-content: center;
+    justify-self: center;
 }
 
 .attendance-times > div {
@@ -1450,7 +1451,8 @@
 }
 
 .attendance-action {
-    min-width: 200px;
+    justify-self: end;
+    max-width: 100%;
 }
 
 .attendance-state {
@@ -1481,14 +1483,17 @@
 }
 
 @media (max-width: 767.98px) {
+    .attendance-today {
+        grid-template-columns: 1fr;
+    }
+
     .attendance-times {
         justify-content: space-between;
         width: 100%;
     }
 
-    .attendance-action,
-    .attendance-action .btn {
-        width: 100%;
+    .attendance-action {
+        justify-self: center;
     }
 }
 
@@ -1652,4 +1657,17 @@
     border-radius: .35rem;
     color: #2374e1;
     padding: .1rem .45rem;
+}
+
+.face-video {
+    background: #0b1220;
+    border-radius: 12px;
+    display: block;
+    margin-bottom: 0.75rem;
+    max-width: 360px;
+    width: 100%;
+}
+
+[hidden] {
+    display: none !important;
 }
