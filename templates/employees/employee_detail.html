@@ -65,4 +65,48 @@
         </div>
     </div>
 </div>
+
+{% for message in messages %}
+{% if 'face' in message.tags %}
+<div class="alert alert-{{ message.level_tag }} alert-dismissible fade show mt-4" role="alert">
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% endfor %}
+
+{% if face_enabled %}
+<div class="app-card mt-4">
+    <div class="section-heading">
+        <div><h2>Đăng ký khuôn mặt chấm công</h2></div>
+        <div class="d-flex align-items-center gap-2 small text-muted">
+            {% if face_profile and face_profile.is_active %}
+            <span>Đã đăng ký lúc {{ face_profile.updated_at|date:"d/m/Y H:i" }}</span>
+            {% else %}
+            <span>Chưa đăng ký</span>
+            {% endif %}
+            <i class="bi bi-person-badge heading-icon"></i>
+        </div>
+    </div>
+    <div data-face-camera data-auto-series data-interval-seconds="{{ face_enroll_interval }}" data-max-shots="{{ face_enroll_max }}">
+        <form method="post" action="{% url 'attendance:face_enroll' employee.pk %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <video class="face-video" autoplay playsinline muted hidden></video>
+            <canvas hidden></canvas>
+            <div class="d-flex flex-wrap gap-2 mb-2">
+                <button type="button" class="btn btn-primary" data-face-start><i class="bi bi-camera-video me-1"></i>Bật camera</button>
+                <button type="button" class="btn btn-light border" data-face-stop hidden><i class="bi bi-x-circle me-1"></i>Tắt camera</button>
+            </div>
+            <p class="small text-muted mb-2" data-face-status></p>
+            <div class="d-flex flex-wrap gap-2 align-items-end">
+                <div class="flex-grow-1" style="min-width: 220px;">
+                    <label class="form-label small mb-1" for="face_image_enroll">Hoặc chọn 1–5 ảnh có sẵn</label>
+                    <input type="file" name="face_image" id="face_image_enroll" accept="image/*" class="form-control" multiple>
+                </div>
+                <button type="submit" class="btn btn-light border"><i class="bi bi-upload me-1"></i>{% if face_profile and face_profile.is_active %}Đăng ký lại bằng ảnh{% else %}Đăng ký bằng ảnh{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

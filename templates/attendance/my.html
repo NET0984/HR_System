@@ -43,7 +43,20 @@
     </div>
 
     <div class="attendance-action">
-        {% if not today_record %}
+        {% if face_action %}
+        <div data-face-camera data-auto-capture data-auto-seconds="{{ face_auto_seconds }}">
+            <form method="post" action="{% if face_action == 'check_out' %}{% url 'attendance:check_out_face' %}{% else %}{% url 'attendance:check_in_face' %}{% endif %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" name="face_image" hidden>
+                <video class="face-video" autoplay playsinline muted hidden></video>
+                <canvas hidden></canvas>
+                <button type="button" class="btn {% if face_action == 'check_out' %}btn-success{% else %}btn-primary{% endif %} btn-lg" data-face-start>
+                    <i class="bi bi-camera-video me-2"></i>{% if face_action == 'check_out' %}Chấm công ra{% else %}Chấm công vào{% endif %}
+                </button>
+                <p class="small text-muted mt-2 mb-0" data-face-status></p>
+            </form>
+        </div>
+        {% elif not today_record %}
         <form method="post" action="{% url 'attendance:check_in' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-box-arrow-in-right me-2"></i>Chấm công vào</button>

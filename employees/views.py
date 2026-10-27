@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
@@ -61,7 +62,14 @@ def employee_create(request):
 @hr_required
 def employee_detail(request, pk):
     employee = get_object_or_404(Employee.objects.select_related('department', 'user'), pk=pk)
-    return render(request, 'employees/employee_detail.html', {'employee': employee})
+    context = {
+        'employee': employee,
+        'face_enabled': getattr(settings, 'FACE_ENABLED', False),
+        'face_profile': getattr(employee, 'face_profile', None),
+        'face_enroll_interval': getattr(settings, 'FACE_ENROLL_INTERVAL_SECONDS', 3),
+        'face_enroll_max': getattr(settings, 'FACE_MAX_ENROLL_IMAGES', 5),
+    }
+    return render(request, 'employees/employee_detail.html', context)
 
 
 @hr_required

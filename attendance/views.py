@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -14,8 +15,9 @@ from audit.models import AuditLog
 from audit.services import record as audit_record
 from employees.models import Department, Employee
 
+from .face import models_available, variant_samples, verify_employee_face
 from .forms import CorrectionDecisionForm, CorrectionRequestForm, HRAttendanceEditForm
-from .models import Attendance, CorrectionRequest
+from .models import Attendance, CorrectionRequest, FaceProfile, FaceSample
 
 
 def _current_employee(user):
@@ -30,6 +32,8 @@ def _attendance_snapshot(attendance):
         'effective_check_out': attendance.effective_check_out.isoformat() if attendance.effective_check_out else None,
         'revision': attendance.revision,
         'source': attendance.source,
+        'face_score': attendance.face_score,
+        'check_out_face_score': attendance.check_out_face_score,
     }
 
 
@@ -80,6 +84,16 @@ def my_attendance(request):
                 selected_month = f'{today.year:04d}-{today.month:02d}'
         page_obj = Paginator(queryset, 20).get_page(request.GET.get('page'))
 
+    face_profile = getattr(employee, 'face_profile', None) if employee else None
+    face_enabled = getattr(settings, 'FACE_ENABLED', False)
+
+    face_action = None
+    if face_enabled and employee:
+        if today_record is None:
+            face_action = 'check_in'
+        elif today_record.is_incomplete:
+            face_action = 'check_out'
+
     context = {
         'employee': employee,
         'today': today,
@@ -89,8 +103,46 @@ def my_attendance(request):
         'page_obj': page_obj,
         'selected_month': selected_month,
         'month_options': _month_options(today),
+        'face_enabled': face_enabled,
+        'face_action': face_action,
+        'face_auto_seconds': getattr(settings, 'FACE_AUTO_CAPTURE_SECONDS', 4),
+        'has_face_profile': bool(face_profile and face_profile.is_active),
     }
     return render(request, 'attendance/my.html', context)
+
+
+def _check_in_core(actor, employee, source=Attendance.SOURCE_BROWSER, face_score=None,
+                   action='attendance.check_in', reason=''):
+    """Tạo bản ghi chấm công vào cho hôm nay. Trả về bản ghi hoặc None nếu đã có."""
+    today = timezone.localdate()
+    with transaction.atomic():
+        Employee.objects.select_for_update().get(pk=employee.pk)
+        existing = Attendance.objects.filter(employee=employee, date=today).first()
+        if existing and existing.original_check_in:
+            return None
+
+        now = timezone.now()
+        try:
+            created = Attendance.objects.create(
+                employee=employee,
+                date=today,
+                original_check_in=now,
+                effective_check_in=now,
+                source=source,
+                face_score=face_score,
+            )
+        except IntegrityError:
+            return None
+
+        audit_record(
+            actor,
+            action,
+            'Attendance',
+            created.pk,
+            after=_attendance_snapshot(created),
+            reason=reason,
+        )
+        return created
 
 
 @login_required
@@ -101,30 +153,99 @@ def check_in(request):
         messages.error(request, 'Tài khoản của bạn chưa gắn hồ sơ nhân viên nên chưa thể chấm công.')
         return redirect('attendance:my')
 
+    created = _check_in_core(request.user, employee)
+    if created is None:
+        messages.info(request, 'Hôm nay bạn đã chấm công vào rồi.')
+    else:
+        messages.success(request, 'Đã chấm công vào thành công.')
+    return redirect('attendance:my')
+
+
+@login_required
+@require_POST
+def check_in_face(request):
+    if not getattr(settings, 'FACE_ENABLED', False):
+        messages.error(request, 'Chức năng chấm công bằng khuôn mặt đang tắt.')
+        return redirect('attendance:my')
+
+    employee = _current_employee(request.user)
+    if not employee:
+        messages.error(request, 'Tài khoản của bạn chưa gắn hồ sơ nhân viên nên chưa thể chấm công.')
+        return redirect('attendance:my')
+
+    upload = request.FILES.get('face_image')
+    if upload is None:
+        messages.error(request, 'Vui lòng chọn ảnh khuôn mặt để chấm công.')
+        return redirect('attendance:my')
+    if upload.size > settings.FACE_MAX_UPLOAD_BYTES:
+        messages.error(request, 'Ảnh khuôn mặt vượt quá dung lượng cho phép.')
+        return redirect('attendance:my')
+
+    accepted, score, status, engine = verify_employee_face(employee, upload)
+    if status == 'not_enrolled':
+        messages.error(request, 'Bạn chưa đăng ký khuôn mặt. Vui lòng liên hệ bộ phận HR.')
+        return redirect('attendance:my')
+    if status == 'no_face':
+        messages.error(request, 'Không phát hiện khuôn mặt. Vui lòng đưa khuôn mặt vào giữa khung và thử lại.')
+        return redirect('attendance:my')
+    if status == 'invalid_image':
+        messages.error(request, 'Không đọc được ảnh. Vui lòng chọn ảnh khác.')
+        return redirect('attendance:my')
+    if not accepted:
+        messages.error(request, 'Khuôn mặt không khớp. Vui lòng thử lại.')
+        return redirect('attendance:my')
+
+    created = _check_in_core(
+        request.user,
+        employee,
+        source=Attendance.SOURCE_FACE,
+        face_score=score,
+        action='attendance.check_in_face',
+        reason=f'Xác thực {engine}, độ khớp {score:.2f}',
+    )
+    if created is None:
+        messages.info(request, 'Hôm nay bạn đã chấm công vào rồi.')
+    else:
+        messages.success(request, 'Đã chấm công vào thành công.')
+    return redirect('attendance:my')
+
+
+def _check_out_core(actor, employee, action='attendance.check_out', face_score=None,
+                    reason=''):
+    """Đóng phiên chấm công hôm nay.
+
+    Trả về (record, status) với status là 'created', 'already' (đã ra rồi)
+    hoặc 'no_check_in' (chưa chấm công vào).
+    """
     today = timezone.localdate()
     with transaction.atomic():
         Employee.objects.select_for_update().get(pk=employee.pk)
-        existing = Attendance.objects.filter(employee=employee, date=today).first()
-        if existing and existing.original_check_in:
-            messages.info(request, 'Hôm nay bạn đã chấm công vào rồi.')
-            return redirect('attendance:my')
+        record = Attendance.objects.filter(employee=employee, date=today).first()
+        if not record or not record.original_check_in:
+            return None, 'no_check_in'
+        if record.effective_check_out:
+            return record, 'already'
 
         now = timezone.now()
-        try:
-            created = Attendance.objects.create(
-                employee=employee,
-                date=today,
-                original_check_in=now,
-                effective_check_in=now,
-            )
-        except IntegrityError:
-            messages.info(request, 'Hôm nay bạn đã chấm công vào rồi.')
-            return redirect('attendance:my')
-
-        audit_record(request.user, 'attendance.check_in', 'Attendance', created.pk, after=_attendance_snapshot(created))
-
-    messages.success(request, 'Đã chấm công vào.')
-    return redirect('attendance:my')
+        record.original_check_out = now
+        record.effective_check_out = now
+        if face_score is not None:
+            record.check_out_face_score = face_score
+        record.save(update_fields=[
+            'original_check_out',
+            'effective_check_out',
+            'check_out_face_score',
+            'updated_at',
+        ])
+        audit_record(
+            actor,
+            action,
+            'Attendance',
+            record.pk,
+            after=_attendance_snapshot(record),
+            reason=reason,
+        )
+        return record, 'created'
 
 
 @login_required
@@ -135,24 +256,74 @@ def check_out(request):
         messages.error(request, 'Tài khoản của bạn chưa gắn hồ sơ nhân viên nên chưa thể chấm công.')
         return redirect('attendance:my')
 
-    today = timezone.localdate()
-    with transaction.atomic():
-        Employee.objects.select_for_update().get(pk=employee.pk)
-        record = Attendance.objects.filter(employee=employee, date=today).first()
-        if not record or not record.original_check_in:
-            messages.error(request, 'Bạn chưa chấm công vào hôm nay nên không thể chấm công ra.')
-            return redirect('attendance:my')
-        if record.effective_check_out:
-            messages.info(request, 'Hôm nay bạn đã chấm công ra rồi.')
-            return redirect('attendance:my')
+    _record, status = _check_out_core(request.user, employee)
+    if status == 'no_check_in':
+        messages.error(request, 'Bạn chưa chấm công vào hôm nay nên không thể chấm công ra.')
+    elif status == 'already':
+        messages.info(request, 'Hôm nay bạn đã chấm công ra rồi.')
+    else:
+        messages.success(request, 'Đã chấm công ra thành công.')
+    return redirect('attendance:my')
 
-        now = timezone.now()
-        record.original_check_out = now
-        record.effective_check_out = now
-        record.save(update_fields=['original_check_out', 'effective_check_out', 'updated_at'])
-        audit_record(request.user, 'attendance.check_out', 'Attendance', record.pk, after=_attendance_snapshot(record))
 
-    messages.success(request, 'Đã chấm công ra.')
+@login_required
+@require_POST
+def check_out_face(request):
+    if not getattr(settings, 'FACE_ENABLED', False):
+        messages.error(request, 'Chức năng chấm công bằng khuôn mặt đang tắt.')
+        return redirect('attendance:my')
+
+    employee = _current_employee(request.user)
+    if not employee:
+        messages.error(request, 'Tài khoản của bạn chưa gắn hồ sơ nhân viên nên chưa thể chấm công.')
+        return redirect('attendance:my')
+
+    today_record = Attendance.objects.filter(
+        employee=employee,
+        date=timezone.localdate(),
+    ).first()
+    if not today_record or not today_record.original_check_in:
+        messages.error(request, 'Bạn chưa chấm công vào hôm nay nên không thể chấm công ra.')
+        return redirect('attendance:my')
+    if today_record.effective_check_out:
+        messages.info(request, 'Hôm nay bạn đã chấm công ra rồi.')
+        return redirect('attendance:my')
+
+    upload = request.FILES.get('face_image')
+    if upload is None:
+        messages.error(request, 'Vui lòng chọn ảnh khuôn mặt để chấm công ra.')
+        return redirect('attendance:my')
+    if upload.size > settings.FACE_MAX_UPLOAD_BYTES:
+        messages.error(request, 'Ảnh khuôn mặt vượt quá dung lượng cho phép.')
+        return redirect('attendance:my')
+
+    accepted, score, status, engine = verify_employee_face(employee, upload)
+    if status == 'not_enrolled':
+        messages.error(request, 'Bạn chưa đăng ký khuôn mặt. Vui lòng liên hệ bộ phận HR.')
+        return redirect('attendance:my')
+    if status == 'no_face':
+        messages.error(request, 'Không phát hiện khuôn mặt. Vui lòng đưa khuôn mặt vào giữa khung và thử lại.')
+        return redirect('attendance:my')
+    if status == 'invalid_image':
+        messages.error(request, 'Không đọc được ảnh. Vui lòng chọn ảnh khác.')
+        return redirect('attendance:my')
+    if not accepted:
+        messages.error(request, 'Khuôn mặt không khớp. Vui lòng thử lại.')
+        return redirect('attendance:my')
+
+    _record, result = _check_out_core(
+        request.user,
+        employee,
+        action='attendance.check_out_face',
+        face_score=score,
+        reason=f'Xác thực {engine}, độ khớp {score:.2f}',
+    )
+    if result == 'no_check_in':
+        messages.error(request, 'Bạn chưa chấm công vào hôm nay nên không thể chấm công ra.')
+    elif result == 'already':
+        messages.info(request, 'Hôm nay bạn đã chấm công ra rồi.')
+    else:
+        messages.success(request, 'Đã chấm công ra thành công.')
     return redirect('attendance:my')
 
 
@@ -497,3 +668,87 @@ def manage_edit(request, pk):
         'record': record,
     }
     return render(request, 'attendance/manage_edit.html', context)
+
+
+@hr_required
+@require_POST
+def face_enroll(request, pk):
+    """Đăng ký khuôn mặt cho nhân viên (chỉ lưu hash, không lưu ảnh).
+
+    Nhận 1-5 ảnh; mỗi ảnh sinh các biến thể augmentation và lưu thành mẫu.
+    """
+    if not getattr(settings, 'FACE_ENABLED', False):
+        messages.error(request, 'Chức năng khuôn mặt đang tắt.', extra_tags='face')
+        return redirect('employees:detail', pk=pk)
+
+    employee = get_object_or_404(Employee, pk=pk)
+    uploads = request.FILES.getlist('face_image')
+    if not uploads:
+        messages.error(request, 'Vui lòng chọn ít nhất một ảnh khuôn mặt.', extra_tags='face')
+        return redirect('employees:detail', pk=pk)
+
+    max_images = getattr(settings, 'FACE_MAX_ENROLL_IMAGES', 5)
+    if len(uploads) > max_images:
+        messages.error(request, f'Chỉ được đăng ký tối đa {max_images} ảnh mỗi lần.', extra_tags='face')
+        return redirect('employees:detail', pk=pk)
+
+    use_embeddings = settings.FACE_ENGINE in ('auto', 'arcface') and models_available()
+    samples = []
+    for upload in uploads:
+        if upload.size > settings.FACE_MAX_UPLOAD_BYTES:
+            messages.error(request, 'Ảnh khuôn mặt vượt quá dung lượng cho phép.', extra_tags='face')
+            return redirect('employees:detail', pk=pk)
+        try:
+            samples.extend(variant_samples(upload, use_embeddings=use_embeddings))
+        except Exception:
+            messages.error(request, 'Không đọc được một trong các ảnh. Vui lòng chọn ảnh khác.', extra_tags='face')
+            return redirect('employees:detail', pk=pk)
+
+    if not samples:
+        messages.error(request, 'Không tạo được mẫu khuôn mặt từ ảnh đã chọn.', extra_tags='face')
+        return redirect('employees:detail', pk=pk)
+
+    # Nhiều khung hình gần giống nhau có thể sinh cùng hash; chỉ giữ một mẫu
+    # cho mỗi hash để không vi phạm ràng buộc unique(profile, image_hash).
+    unique_samples = {}
+    for variant, image_hash, embedding in samples:
+        current = unique_samples.get(image_hash)
+        if current is None:
+            unique_samples[image_hash] = (variant, image_hash, embedding)
+        elif current[2] is None and embedding is not None:
+            unique_samples[image_hash] = (variant, image_hash, embedding)
+    samples = list(unique_samples.values())
+
+    with transaction.atomic():
+        profile, _created = FaceProfile.objects.update_or_create(
+            employee=employee,
+            defaults={'is_active': True},
+        )
+        profile.samples.all().delete()
+        FaceSample.objects.bulk_create([
+            FaceSample(
+                profile=profile,
+                image_hash=image_hash,
+                embedding=embedding,
+                variant=variant,
+            )
+            for variant, image_hash, embedding in samples
+        ])
+
+    audit_record(
+        request.user,
+        'face.enroll',
+        'FaceProfile',
+        profile.pk,
+        after={
+            'employee': employee.employee_code,
+            'images': len(uploads),
+            'samples': len(samples),
+        },
+    )
+    messages.success(
+        request,
+        f'Đã đăng ký khuôn mặt cho {employee.full_name}.',
+        extra_tags='face',
+    )
+    return redirect('employees:detail', pk=pk)

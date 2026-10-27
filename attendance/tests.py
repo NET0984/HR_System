@@ -1,17 +1,22 @@
+import io
+import random
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone as dt_timezone
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connections
-from django.test import Client, TestCase, TransactionTestCase
+from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from PIL import Image
 
 from audit.models import AuditLog
 from employees.models import Department, Employee
 
-from .models import Attendance, CorrectionRequest
+from .face import average_hash, cosine_similarity, hamming_similarity, variant_hashes
+from .models import Attendance, CorrectionRequest, FaceProfile, FaceSample
 
 
 User = get_user_model()
@@ -575,3 +580,323 @@ class HRAttendanceManageTests(TestCase):
         )
         self.assertContains(response, expected)
         self.assertNotContains(response, '<th class="text-end">Thao tác</th>')
+
+
+def _face_image(seed):
+    """Ảnh PNG tổng hợp: mỗi khối 8x8 có một mức xám cố định theo seed."""
+    rng = random.Random(seed)
+    blocks = [[rng.randrange(256) for _ in range(8)] for _ in range(8)]
+    image = Image.new('L', (64, 64))
+    pixels = image.load()
+    for y in range(64):
+        for x in range(64):
+            pixels[x, y] = blocks[y // 8][x // 8]
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    return buffer.getvalue()
+
+
+def _upload(seed):
+    return SimpleUploadedFile('face.png', _face_image(seed), content_type='image/png')
+
+
+class FaceHashTests(TestCase):
+    def test_average_hash_is_deterministic(self):
+        self.assertEqual(
+            average_hash(io.BytesIO(_face_image(1))),
+            average_hash(io.BytesIO(_face_image(1))),
+        )
+
+    def test_hamming_similarity_bounds(self):
+        self.assertEqual(hamming_similarity('0' * 16, '0' * 16), 1.0)
+        self.assertLess(hamming_similarity('0' * 16, 'f' * 16), 0.1)
+        self.assertEqual(hamming_similarity('', '0' * 16), 0.0)
+
+    def test_variant_hashes_returns_multiple_variants(self):
+        variants = variant_hashes(io.BytesIO(_face_image(1)))
+
+        self.assertGreaterEqual(len(variants), 2)
+        self.assertIn('original', {name for name, _ in variants})
+        for _name, image_hash in variants:
+            self.assertEqual(len(image_hash), 16)
+
+    def test_cosine_similarity(self):
+        self.assertAlmostEqual(cosine_similarity([1, 0, 0], [1, 0, 0]), 1.0)
+        self.assertAlmostEqual(cosine_similarity([1, 0, 0], [0, 1, 0]), 0.0)
+        self.assertAlmostEqual(cosine_similarity([1, 0, 0], [-1, 0, 0]), -1.0)
+        self.assertEqual(cosine_similarity([1, 0], [1, 0, 0]), 0.0)
+        self.assertEqual(cosine_similarity([0, 0], [0, 0]), 0.0)
+
+
+@override_settings(FACE_ENABLED=True, FACE_ENGINE='hash', FACE_HASH_THRESHOLD=0.90)
+class FaceCheckInTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='face-user',
+            password='test-password-123',
+            role=User.ROLE_EMPLOYEE,
+        )
+        self.employee = Employee.objects.create(
+            full_name='Nguyễn Minh Anh',
+            joining_date=date(2024, 1, 15),
+            user=self.user,
+        )
+        self.hr = User.objects.create_user(
+            username='face-hr',
+            password='test-password-123',
+            role=User.ROLE_HR_ADMIN,
+        )
+
+    def _enroll(self, seed=1):
+        self.client.login(username='face-hr', password='test-password-123')
+        response = self.client.post(
+            reverse('attendance:face_enroll', args=[self.employee.pk]),
+            {'face_image': _upload(seed)},
+        )
+        self.client.logout()
+        return response
+
+    def _login_employee(self):
+        self.client.login(username='face-user', password='test-password-123')
+
+    def test_hr_can_enroll_face_and_only_hash_is_stored(self):
+        self._enroll()
+
+        profile = FaceProfile.objects.get(employee=self.employee)
+        self.assertTrue(profile.is_active)
+        self.assertGreaterEqual(profile.samples.count(), 2)
+        for sample in profile.samples.all():
+            self.assertEqual(len(sample.image_hash), 16)
+        self.assertTrue(AuditLog.objects.filter(action='face.enroll').exists())
+
+    def test_enroll_multiple_images_creates_more_samples(self):
+        self.client.login(username='face-hr', password='test-password-123')
+
+        self.client.post(
+            reverse('attendance:face_enroll', args=[self.employee.pk]),
+            {'face_image': [_upload(1), _upload(2)]},
+        )
+
+        profile = FaceProfile.objects.get(employee=self.employee)
+        self.assertGreater(profile.samples.count(), 6)
+
+    def test_re_enroll_replaces_old_samples(self):
+        self._enroll(seed=1)
+        profile = FaceProfile.objects.get(employee=self.employee)
+        before = profile.samples.count()
+
+        self._enroll(seed=1)
+
+        self.assertEqual(
+            FaceProfile.objects.get(employee=self.employee).samples.count(),
+            before,
+        )
+
+    def test_enroll_duplicate_images_are_deduped(self):
+        self.client.login(username='face-hr', password='test-password-123')
+
+        self.client.post(
+            reverse('attendance:face_enroll', args=[self.employee.pk]),
+            {'face_image': [_upload(1), _upload(1)]},
+        )
+
+        profile = FaceProfile.objects.get(employee=self.employee)
+        hashes = list(profile.samples.values_list('image_hash', flat=True))
+        self.assertEqual(len(hashes), len(set(hashes)))
+
+    def test_enroll_rejects_more_than_five_images(self):
+        self.client.login(username='face-hr', password='test-password-123')
+
+        self.client.post(
+            reverse('attendance:face_enroll', args=[self.employee.pk]),
+            {'face_image': [_upload(index) for index in range(1, 7)]},
+        )
+
+        self.assertFalse(FaceProfile.objects.filter(employee=self.employee).exists())
+
+    def test_face_check_in_creates_record_with_score(self):
+        self._enroll(seed=1)
+        self._login_employee()
+
+        self.client.post(reverse('attendance:check_in_face'), {'face_image': _upload(1)})
+
+        record = Attendance.objects.get(employee=self.employee)
+        self.assertEqual(record.source, Attendance.SOURCE_FACE)
+        self.assertIsNotNone(record.face_score)
+        self.assertGreaterEqual(record.face_score, 0.90)
+        self.assertTrue(
+            AuditLog.objects.filter(action='attendance.check_in_face').exists()
+        )
+
+    def test_face_check_in_rejects_different_image(self):
+        self._enroll(seed=1)
+        self._login_employee()
+
+        response = self.client.post(
+            reverse('attendance:check_in_face'),
+            {'face_image': _upload(2)},
+        )
+
+        self.assertRedirects(response, reverse('attendance:my'))
+        self.assertFalse(Attendance.objects.filter(employee=self.employee).exists())
+
+    def test_face_check_in_requires_enrollment(self):
+        self._login_employee()
+
+        self.client.post(reverse('attendance:check_in_face'), {'face_image': _upload(1)})
+
+        self.assertFalse(Attendance.objects.filter(employee=self.employee).exists())
+
+    def test_face_check_in_twice_creates_single_record(self):
+        self._enroll(seed=1)
+        self._login_employee()
+
+        self.client.post(reverse('attendance:check_in_face'), {'face_image': _upload(1)})
+        self.client.post(reverse('attendance:check_in_face'), {'face_image': _upload(1)})
+
+        self.assertEqual(Attendance.objects.filter(employee=self.employee).count(), 1)
+
+    def test_upload_too_large_is_rejected(self):
+        self._enroll(seed=1)
+        self._login_employee()
+
+        with override_settings(FACE_MAX_UPLOAD_BYTES=10):
+            self.client.post(
+                reverse('attendance:check_in_face'),
+                {'face_image': _upload(1)},
+            )
+
+        self.assertFalse(Attendance.objects.filter(employee=self.employee).exists())
+
+    def test_employee_cannot_enroll_face(self):
+        self._login_employee()
+
+        self.client.post(
+            reverse('attendance:face_enroll', args=[self.employee.pk]),
+            {'face_image': _upload(1)},
+        )
+
+        self.assertFalse(FaceProfile.objects.filter(employee=self.employee).exists())
+
+    def test_attendance_page_shows_check_in_camera(self):
+        self._login_employee()
+
+        response = self.client.get(reverse('attendance:my'))
+
+        self.assertContains(response, 'data-face-camera')
+        self.assertContains(response, 'data-auto-capture')
+        self.assertContains(response, 'data-auto-seconds="4"')
+        self.assertContains(response, 'Chấm công vào')
+
+    def test_attendance_page_shows_check_out_camera_after_check_in(self):
+        self._enroll(seed=1)
+        self._login_employee()
+        self.client.post(reverse('attendance:check_in'))
+
+        response = self.client.get(reverse('attendance:my'))
+
+        self.assertContains(response, 'data-face-camera')
+        self.assertContains(response, 'Chấm công ra')
+
+    def test_attendance_page_hides_face_camera_after_check_out(self):
+        self._enroll(seed=1)
+        self._login_employee()
+        self.client.post(reverse('attendance:check_in'))
+        self.client.post(reverse('attendance:check_out_face'), {'face_image': _upload(1)})
+
+        response = self.client.get(reverse('attendance:my'))
+
+        self.assertNotContains(response, 'data-face-camera')
+
+    def test_face_check_out_creates_checkout_with_score(self):
+        self._enroll(seed=1)
+        self._login_employee()
+        self.client.post(reverse('attendance:check_in'))
+
+        self.client.post(reverse('attendance:check_out_face'), {'face_image': _upload(1)})
+
+        record = Attendance.objects.get(employee=self.employee)
+        self.assertIsNotNone(record.effective_check_out)
+        self.assertIsNotNone(record.check_out_face_score)
+        self.assertGreaterEqual(record.check_out_face_score, 0.80)
+        self.assertTrue(
+            AuditLog.objects.filter(action='attendance.check_out_face').exists()
+        )
+
+    def test_face_check_out_requires_check_in(self):
+        self._enroll(seed=1)
+        self._login_employee()
+
+        self.client.post(reverse('attendance:check_out_face'), {'face_image': _upload(1)})
+
+        self.assertFalse(Attendance.objects.filter(employee=self.employee).exists())
+
+    def test_face_check_out_rejects_different_image(self):
+        self._enroll(seed=1)
+        self._login_employee()
+        self.client.post(reverse('attendance:check_in'))
+
+        self.client.post(reverse('attendance:check_out_face'), {'face_image': _upload(2)})
+
+        record = Attendance.objects.get(employee=self.employee)
+        self.assertIsNone(record.effective_check_out)
+        self.assertIsNone(record.check_out_face_score)
+
+    def test_face_check_out_twice_keeps_first_time(self):
+        self._enroll(seed=1)
+        self._login_employee()
+        self.client.post(reverse('attendance:check_in'))
+
+        self.client.post(reverse('attendance:check_out_face'), {'face_image': _upload(1)})
+        first = Attendance.objects.get(employee=self.employee).effective_check_out
+        self.client.post(reverse('attendance:check_out_face'), {'face_image': _upload(1)})
+
+        record = Attendance.objects.get(employee=self.employee)
+        self.assertEqual(record.effective_check_out, first)
+
+    def test_employee_detail_shows_enroll_camera(self):
+        self.client.login(username='face-hr', password='test-password-123')
+
+        response = self.client.get(reverse('employees:detail', args=[self.employee.pk]))
+
+        self.assertContains(response, 'Đăng ký khuôn mặt')
+        self.assertContains(response, 'data-face-camera')
+        self.assertContains(response, 'data-auto-series')
+
+    def test_face_error_message_shows_near_face_card(self):
+        self.client.login(username='face-hr', password='test-password-123')
+
+        response = self.client.post(
+            reverse('attendance:face_enroll', args=[self.employee.pk]),
+            {},
+            follow=True,
+        )
+
+        html = response.content.decode()
+        message = 'Vui lòng chọn ít nhất một ảnh khuôn mặt.'
+        self.assertEqual(html.count(message), 1)
+        self.assertLess(html.index(message), html.index('Đăng ký khuôn mặt chấm công'))
+
+
+class FaceCheckInDisabledTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='off-user',
+            password='test-password-123',
+            role=User.ROLE_EMPLOYEE,
+        )
+        self.employee = Employee.objects.create(
+            full_name='Nguyễn Minh Anh',
+            joining_date=date(2024, 1, 15),
+            user=self.user,
+        )
+
+    @override_settings(FACE_ENABLED=False)
+    def test_face_check_in_is_disabled(self):
+        profile = FaceProfile.objects.create(employee=self.employee)
+        FaceSample.objects.create(profile=profile, image_hash='0' * 16)
+        self.client.login(username='off-user', password='test-password-123')
+
+        self.client.post(reverse('attendance:check_in_face'), {'face_image': _upload(1)})
+
+        self.assertFalse(Attendance.objects.filter(employee=self.employee).exists())
